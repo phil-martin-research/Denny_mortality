@@ -68,15 +68,12 @@ Mort$Dead<-ifelse(Mort$Status==1,0,1)
 
 #and divide by Length of survey period
 Mort$Dead_corr<-Mort$Dead/Mort$Length
-#and arcsine square root the data
-Mort$Dead_sin<-asin(sqrt(Mort$Dead_corr))
-head(Mort)
 
 #remove trees for which there is no status
 Mort_CC<-Mort[complete.cases(Mort$Dead),]
 
 
-ggplot(Mort_CC,aes(x=DBH,y=Dead_sin))+facet_wrap(~Period)+geom_smooth(method="glm",formula=y ~ poly(x, 2, raw=TRUE))+geom_rug()+geom_point()
+ggplot(Mort_CC,aes(x=DBH,y=Dead))+facet_wrap(~Period)+geom_smooth(method="glm",formula=y ~ poly(x, 2, raw=TRUE),family=binomial)+geom_rug()+geom_point()
 
 M1<-lmer(Dead_sin~DBH+(1|Tree_ID),data=Mort_CC)
 M2<-lmer(Dead_sin~DBH+I(DBH^2)+(1|Tree_ID),data=Mort_CC)
@@ -109,7 +106,7 @@ rolling<-rolling[with(rolling,order(DBH)),]
 
 #bin data into 5cm DBH classes
 
-Mort_CC$bin <- cut(Mort_CC$DBH,seq(0,max(Mort_CC$DBH),5))
+Mort_CC$bin <- cut(Mort_CC$DBH,seq(0,max(Mort_CC$DBH),10))
 Mort_bin <- ddply(Mort_CC, "bin", function(DF) {
   data.frame(mean=numcolwise(mean)(DF), length=numcolwise(length)(DF))
 })
@@ -176,56 +173,4 @@ plot(Mort_88_2$DBH,Mort_88_2$Dead)
 auc.tmp <- performance(predict(M1),"auc")
 auc <- as.numeric(auc.tmp@y.values)
 plot(M1)
-
-################################################################################
-#below this point is the survival analysis code, not sure that this is much use#
-################################################################################
-
-
-#include only complete cases - those with data on whether stems are alive or dead and not nas
-DBH<-DBH[complete.cases(DBH[,6]),]
-#recode deatch as 1 and alive as 0
-DBH$Death<-ifelse(DBH$Status==1,0,1)
-
-#create function to work out time since first measurment for each tree
-Tree_ID2<-unique(DBH$Tree_ID)
-Tree_surv<-NULL
-for (i in 1:length(Tree_ID)){
-  Tree_sub<-subset(DBH,Tree_ID==Tree_ID2[i])
-  Tree_sub$TSFM<-max(Tree_sub$Year)-min(Tree_sub$Year)
-  Tree_sub2<-data.frame(start=min(Tree_sub$Year),stop=max(Tree_sub$Year),min_dbh=min(Tree_sub$DBH),max_dbh=max(Tree_sub$DBH),
-             gr=(max(Tree_sub$DBH)-min(Tree_sub$DBH))/max(Tree_sub$TSFM),death=max(Tree_sub$Death),Sp=Tree_sub$Species[1])
-  Tree_surv<-rbind(Tree_surv,Tree_sub2)
-}
-
-head(Tree_surv)
-
-#subset to include only trees that have been measured at two time periods or more
-Tree_surv<-subset(Tree_surv,stop>start)
-Tree_surv<-subset(Tree_surv,max_dbh>min_dbh)
-selected<-c("F","I","Q")
-Tree_surv<-Tree_surv[Tree_surv$Sp %in% selected,]
-Tree_surv$Sp<-factor(Tree_surv$Sp)
-
-#create sruvival object
-Tree_surv$S<-Surv(Tree_surv$min_dbh,Tree_surv$max_dbh,Tree_surv$death)
-summary(Tree_surv$Sp)
-
-(xtabs( ~ S+S, data=Tree_surv))
-
-#create model using  coph model type
-M1<- coxph(S~Sp, data = Tree_surv)
-
-#plot base survival over dbh
-ggsurv(survfit(M1))
-
-#plot species specific survival
-tree_surv2<- survfit(Surv(Tree_surv$min_dbh,Tree_surv$max_dbh,Tree_surv$death)~Sp, data = Tree_surv)
-ggsurv(tree_surv2,plot.cens = F)
-
-
-
-
-#plot base survival by speceis
-
 
