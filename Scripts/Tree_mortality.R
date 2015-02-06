@@ -33,10 +33,6 @@ DBH<-subset(DBH,Block<51&Year>1960)
 
 ggplot(DBH,aes(x=Easting,y=Northing,colour=as.factor(Status)))+geom_point(shape=1)+facet_wrap(~Year)
 
-
-
-
-
 #create loop to give trees that were alive at previous time period
 #loop subsets to give trees that are alive at beginning of survey period
 #and then determines mortality during period (Mort sub)
@@ -66,16 +62,59 @@ for (i in 1:nrow(Surv_years)){
 #now change status to 1=dead and 0=alive
 Mort$Dead<-ifelse(Mort$Status==1,0,1)
 
-#and divide by Length of survey period
-Mort$Dead_corr<-Mort$Dead/Mort$Length
+
+#subset the data to give only data from the 1964-1984 survey
+
+Mort_64_84<-subset(Mort,Period=="1964-1984")
+
 
 #remove trees for which there is no status
 Mort_CC<-Mort[complete.cases(Mort$Dead),]
+head(Mort_CC)
+
+#bin data for tree size into 5cm size classes
+summary(Mort_CC$DBH)
+Mort_CC$Size_bin<-findInterval(Mort_CC$DBH,seq(0,150,10))
+
+plot(Mort_CC$Size_bin,Mort_CC$DBH)
+
+#create plot to show the balance of dead vs alive for size classses
+Plots3<-ddply(Mort_CC,.(Dead,Size_bin),summarise,freq=length(Dead))
+
+Plots4<-ddply(Mort_CC,.(Size_bin,Year),summarise,mean=mean(Dead/Length),freq=length(Dead))
+
+
+ggplot(Plots3,aes(x=Size_bin*10,y=Dead,size=freq))+geom_point()+geom_point(data=Plots4,aes(y=mean),size=3,colour="red",shape=0)+xlim(0,150)
+
+ggplot(Mort_CC,aes(x=DBH))+geom_histogram()+facet_wrap(~Year)
+
+#look at frequency distributions
+Mort_CC_alive<-subset(Mort_CC,Dead==0&Species=="F")
+
+Plots4<-ddply(Mort_CC_alive,.(Size_bin,Year),summarise,freq=length(Dead))
+head(Plots4)
+
+head(Mort_CC_alive)
+
+
+ggplot(Mort_CC_alive,aes(x=Year,y=DBH,group=Tree_ID))+geom_point()+geom_line(alpha=0.2)+geom_smooth(aes(group=NULL),method="lm",size=4)
+
+
+head(Mort_CC)
 
 
 ggplot(Mort_CC,aes(x=DBH,y=Dead))+facet_wrap(~Period)+geom_smooth(method="glm",formula=y ~ poly(x, 2, raw=TRUE),family=binomial)+geom_rug()+geom_point()
 
-M1<-lmer(Dead_sin~DBH+(1|Tree_ID),data=Mort_CC)
+M1<-glmer(Dead~DBH+(Length|Tree_ID),data=Mort_CC,family=binomial)
+M2<-glmer(Dead~DBH+I(DBH^2)+(Length|Tree_ID),data=Mort_CC,family=binomial)
+M3<-glmer(Dead~DBH*Period+I(DBH^2)+(Length|Tree_ID),data=Mort_CC,family=binomial)
+
+AICc(M1,M2,M3)
+
+summary(M1)
+summary(M2)
+summary(M3)
+
 M2<-lmer(Dead_sin~DBH+I(DBH^2)+(1|Tree_ID),data=Mort_CC)
 M3<-lmer(Dead_sin~DBH+I(DBH^2)+Species+(1|Tree_ID),data=Mort_CC)
 M4<-lmer(Dead_sin~DBH*Species+I(DBH^2)+(1|Tree_ID),data=Mort_CC)
@@ -114,63 +153,4 @@ head(Mort_bin)
 
 ggplot(Mort_bin,aes(x=mean.DBH,y=mean.Dead_corr,size=length.DBH))+geom_point()
 
-
-AICc(M1,M2,M3,M4,M5,M6,M7)
-
-M2<-lmer(Dead~DBH+(Length|Tree_ID),data=Mort,family=binomial(link = "logit"))
-M3<-glmer(cbind(Dead,Length-Dead)~DBH+I(DBH^2)+(1|Tree_ID),data=Mort,family=binomial)
-
-AICc(M2,M3)
-summary(M2)
-
-
-
-#work out distance to nearest dead tree
-Distances<-rdist(Mort_88_2[9:10])
-Mort_88_2$Tree_ID
-arrayInd(4, dim(Distances))
-
-#produce function to remove distances for live trees
-for (i in 1:nrow(Distances)){
-  for (y in 1:ncol(Distances)){
-    Distances[i,y]<-ifelse(Mort_88_2$Dead[i]==1,Distances[i,y],NA)
-  }
-}
-Distances[Distances==0]<-NA
-
-#now work out minimum distance to a dead tree
-for (i in 1:ncol(Distances)){
-  Mort_88_2$Dead_Dist[i]<-min(Distances[,i],na.rm = T)
-}
-summary(Mort_88_2$Dead_Dist)
-
-#now work out DBH of nearest dead tree
-for (i in 1:ncol(Distances)){
-  Index<-match(min(Distances[,i],na.rm = T),Distances[,i])
-  Mort_88_2$Dead_DBH[i]<-Mort_88_2$DBH[Index]
-}
-
-summary(Mort_88_2$Dead_DBH)
-
-
-#model of mortality from 1964-1988
-M0<-glm(Dead~1,data=Mort_88_2,family=binomial(link = "logit"))
-M1<-glm(Dead~DBH,data=Mort_88_2,family=binomial(link = "logit"))
-M2<-glm(Dead~DBH+I(DBH^2),data=Mort_88_2,family=binomial(link = "logit"))
-M3<-glm(Dead~DBH+Dead_Dist,data=Mort_88_2,family=binomial(link = "logit"))
-M4<-glm(Dead~Dead_Dist,data=Mort_88_2,family=binomial(link = "logit"))
-M5<-glm(Dead~Dead_Dist+Dead_DBH,data=Mort_88_2,family=binomial(link = "logit"))
-M6<-glm(Dead~Dead_Dist*Dead_DBH,data=Mort_88_2,family=binomial(link = "logit"))
-M7<-glm(Dead~DBH+Species,data=Mort_88_2,family=binomial(link = "logit"))
-M8<-glm(Dead~DBH*Species,data=Mort_88_2,family=binomial(link = "logit"))
-
-
-
-plot(Mort_88_2$Dead_Dist,(plogis(predict(M4)))/24)
-plot(Mort_88_2$DBH,(plogis(predict(M1)))/24)
-plot(Mort_88_2$DBH,Mort_88_2$Dead)
-
-auc.tmp <- performance(predict(M1),"auc")
-auc <- as.numeric(auc.tmp@y.values)
-plot(M1)
 
