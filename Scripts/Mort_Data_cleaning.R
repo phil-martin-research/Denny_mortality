@@ -55,11 +55,13 @@ Grid_bind<-rbind(Grid_sub,Grid_bind)
 }
 
 
+
 Tree_grid2<-merge(Tree_grid,Grid_bind,by=c("ID2","Year"),all=T)
 keeps<-c("ID2","Year","DBH.y","BA.y","Dead.y")
 Tree_grid2<-Tree_grid2[keeps]
 colnames(Tree_grid2)<-c("ID2","Year","DBH","BA","Dead")
 Tree_grid2$Dead<-ifelse(Tree_grid2$Dead==1,0,1)
+
 
 #work out whether trees are dead
 #run a loop for each tree to look at rows above
@@ -122,7 +124,13 @@ for (i in 1:length(Uni_Tree)){
   Tree_dead2<-rbind(Grid_sub,Tree_dead2)
 }
 
-write.csv(Tree_dead2,"Data/Dead.csv",row.names=F)
+#merge this with plot level data
+keeps<-c("ID2","Block")
+DBH_Block<-DBH_ID[keeps]
+
+Tree_block<-merge(Tree_dead2,DBH_Block,by="ID2",all = F)
+
+write.csv(Tree_block,"Data/Dead.csv",row.names=F)
 
 Tree_dead3<-NULL
 Years<-unique(Tree_dead2$Year)
