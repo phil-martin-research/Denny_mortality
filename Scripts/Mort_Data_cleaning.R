@@ -94,6 +94,7 @@ head(Tree_dead)
 
 
 #now calculate growth rates
+
 Uni_Tree<-unique(Tree_dead$ID2)
 head(Tree_dead)
 Tree_dead$GR<-NA
@@ -119,11 +120,11 @@ for (i in 1:length(Uni_Tree)){
 }
 
 
-
 #add location to mortality data
 keeps<-c("ID2","Easting","Northing","Species")
 DBH_Loc<-DBH_ID[keeps]
-Dead_loc<-merge(Tree_dead2,DBH_Loc,by="ID2")
+DBH_Loc<-unique(DBH_Loc)
+Dead_loc<-merge(Tree_dead2,DBH_Loc,by="ID2",all = F)
 Dead_loc<-subset(Dead_loc,!is.na(Dead2))
 
 
