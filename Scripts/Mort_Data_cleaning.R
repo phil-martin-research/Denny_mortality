@@ -10,6 +10,8 @@
 
 library(plyr)
 library(ggplot2)
+library(lme4)
+library(MuMIn)
 
 #different measures of growth to include
 #1. GR- mm growth per year
@@ -47,7 +49,7 @@ for (i in 1:nrow(DBH_ID)){
 Grid_sub<-subset(Tree_grid,ID2==DBH_ID$ID2[i])
 Grid_sub<-subset(Grid_sub,Year==DBH_ID$Year[i])
 Grid_sub$DBH<-DBH_ID$DBH[i]
-Grid_sub$BA<-(Grid_sub$DBH^2)*(pi/4)
+Grid_sub$BA<-(Grid_sub$DBH^2)*0.00007854
 Grid_sub$Dead<-DBH_ID$Status[i]
 Grid_bind<-rbind(Grid_sub,Grid_bind)
 }
@@ -74,8 +76,10 @@ for (i in 1:length(Tree_IDs)){
     if (is.na(Tree_sub2$Dead[y])&&is.na(Tree_sub2$Dead[y-1])==T){
       Tree_sub2$Dead2[y]<-NA
     }
-    else if (((sum(Tree_sub2$Dead[1:(y-1)],na.rm = T))==0)&&(is.na(Tree_sub2$Dead[y]))){
-    Tree_sub2$Dead2[y]<-1
+    else if (((sum(Tree_sub2$Dead[1:(y-1)],na.rm = T))>0)&&(is.na(Tree_sub2$Dead[y]))){
+    Tree_sub2$Dead2[y]<-NA
+    }else if (((sum(Tree_sub2$Dead[1:(y-1)],na.rm = T))==0)&&(is.na(Tree_sub2$Dead[y]))){
+      Tree_sub2$Dead2[y]<-1
     } else {
     Tree_sub2$Dead2[y]<-0
     }
@@ -94,23 +98,73 @@ Tree_dead$GR<-NA
 Tree_dead$BAGR<-NA
 Tree_dead$relGR<-NA
 Tree_dead$relBAGR<-NA
+Tree_dead$DBH2<-NA
+Tree_dead$BA2<-NA
 Tree_dead2<-NULL
 for (i in 1:length(Uni_Tree)){
   Grid_sub<-subset(Tree_dead,ID2==Uni_Tree[i])
-  for (y in 2:nrow(Grid_sub)){
-  Grid_sub$GR[y]<-((Grid_sub$DBH[y]-Grid_sub$DBH[y-1])*10)/(Grid_sub$Year[y]-Grid_sub$Year[y-1])
-  Grid_sub$BAGR[y]<-((Grid_sub$BA[y]-Grid_sub$BA[y-1]))/(Grid_sub$Year[y]-Grid_sub$Year[y-1])
+  for (y in 3:nrow(Grid_sub)){
+  Grid_sub$GR[y]<-((Grid_sub$DBH[y-1]-Grid_sub$DBH[y-2])*10)/(Grid_sub$Year[y-1]-Grid_sub$Year[y-2])
+  Grid_sub$BAGR[y]<-(((Grid_sub$BA[y-1]-Grid_sub$BA[y-2]))*10000)/(Grid_sub$Year[y-1]-Grid_sub$Year[y-2])
   Grid_sub$relGR[y]<-((Grid_sub$GR[y]/10)/Grid_sub$DBH[y-1])*100
+  Grid_sub$relBAGR[y]<-(Grid_sub$BAGR[y]/10000)/Grid_sub$BA[y-2]
+  }
+  for (h in 2:nrow(Grid_sub)){
+    Grid_sub$DBH2[h]<-Grid_sub$DBH[h-1]
+    Grid_sub$BA2[h]<-Grid_sub$BA[h-1]
   }
   Tree_dead2<-rbind(Grid_sub,Tree_dead2)
 }
 
+head(Tree_dead2)
+
+Tree_dead3<-subset(Tree_dead2,!is.na(Dead2))
+Tree_dead3<-subset(Tree_dead3,Year>=1988)
+Tree_dead3<-subset(Tree_dead3,GR>-10)
+Tree_dead3<-subset(Tree_dead3,GR<10)
+
+head(Tree_dead3)
 
 summary(Tree_dead2)
-ggplot(Tree_dead2,aes(x=relGR))+geom_density()+xlim(-5,25)+facet_grid(Dead2~Year,scales="free")
+ggplot(Tree_dead3,aes(x=GR))+geom_density()+facet_grid(Dead2~Year)
+ggplot(Tree_dead3,aes(x=relGR))+geom_density()+facet_grid(Dead2~Year)
+ggplot(Tree_dead3,aes(x=relBAGR))+geom_density()+facet_grid(Dead2~Year)
+
+ggplot(Tree_dead3,aes(x=DBH2,y=relGR))+geom_point()+facet_wrap(~Year)+geom_smooth(method="lm")
+
+ggplot(Tree_dead3,aes(x=BAGR,y=Dead2))+geom_point(shape=1)+facet_wrap(~Year)+geom_smooth(family="binomial",method=glm)
+
+ggplot(Tree_dead3,aes(x=DBH2,y=Dead2))+geom_point(shape=1)+facet_wrap(~Year)+geom_smooth(family="binomial",method=glm)
+ggplot(Tree_dead3,aes(x=BA2,y=Dead2))+geom_point(shape=1)+facet_wrap(~Year)+geom_smooth(family="binomial",method=glm)
 
 
-Tree_growth<-subset(Tree_grid3,ID2<100)
-Tree_growth<-subset(Tree_grid3,!is.na(DBH))
+head(Tree_dead3)
 
-ggplot(Tree_growth,aes(x=BA,y=BAGR,group=ID2))+geom_point()+ylim(-1,10000)
+M1<-glmer(Dead2~BAGR+(1|ID2),data=Tree_dead3,family=binomial)
+M2<-glmer(Dead2~DBH2+(1|ID2),data=Tree_dead3,family=binomial)
+M3<-glmer(Dead2~DBH2+I(DBH2^2)+(1|ID2),data=Tree_dead3,family=binomial)
+M4<-glmer(Dead2~DBH2+I(DBH2^2)+BAGR+(1|ID2),data=Tree_dead3,family=binomial)
+
+
+AICc(M1,M2,M3,M4)
+r.squaredGLMM(M1)
+
+plot(Tree_dead3$DBH2,plogis(predict(M3,re.form=NA)))
+
+
+Tree_dead3$DBH2<-round(Tree_dead3$DBH,-1)
+
+Death_rate<-ddply(Tree_dead3,.(Year,DBH2),summarize,Rate=sum(Dead2)/length(Dead2))
+
+Death_rate$Period<-NA
+Death_rate$Period[1]<-20
+for (i in 2:nrow(Death_rate)){
+  Death_rate$Period[i]<-Death_rate$Year[i]-Death_rate$Year[i-1]
+}
+
+Death_rate$Cor_rate<-Death_rate$Rate/Death_rate$Period
+
+ggplot(Death_rate,aes(x=DBH2,y=Rate))+geom_point()+facet_wrap(~Year)
+
+summary(Tree_dead3$Dead2)
+
