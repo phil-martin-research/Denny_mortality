@@ -103,6 +103,9 @@ Tree_dead$relGR<-NA
 Tree_dead$relBAGR<-NA
 Tree_dead$DBH2<-NA
 Tree_dead$BA2<-NA
+Tree_dead$relSize<-NA
+ddply(Tree_dead,.(Year),summarize,BA=sum(BA,na.rm = T))
+
 Tree_dead2<-NULL
 for (i in 1:length(Uni_Tree)){
   Grid_sub<-subset(Tree_dead,ID2==Uni_Tree[i])
@@ -119,13 +122,27 @@ for (i in 1:length(Uni_Tree)){
   Tree_dead2<-rbind(Grid_sub,Tree_dead2)
 }
 
+Tree_dead3<-NULL
+Years<-unique(Tree_dead2$Year)
+for (i in 2:length(Years)){
+  Dead_sub<-subset(Tree_dead2,Year==Years[i])
+  for (j in 1:nrow(Dead_sub)){
+    BA_sub<-subset(Dead_sub,BA2<Dead_sub$BA2[j])
+    BA_sum<-sum(BA_sub$BA2,na.rm = T)
+    BA_sum2<-sum(Dead_sub$BA2,na.rm = T)
+    Dead_sub$relSize[j]<-BA_sum/BA_sum2
+  }
+  Tree_dead3<-rbind(Dead_sub,Tree_dead3)
+}
+
+head(Tree_dead3)
 
 #add location to mortality data
 keeps<-c("ID2","Easting","Northing","Species")
 DBH_Loc<-DBH_ID[keeps]
 DBH_Loc<-unique(DBH_Loc)
-Dead_loc<-merge(Tree_dead2,DBH_Loc,by="ID2",all = F)
+Dead_loc<-merge(Tree_dead3,DBH_Loc,by="ID2",all = F)
 Dead_loc<-subset(Dead_loc,!is.na(Dead2))
 
 
-write.csv(Dead_loc,"Data/Dead.csv",row.names=F)
+write.csv(Dead_loc,"Data/Dead_size.csv",row.names=F)
