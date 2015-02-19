@@ -29,14 +29,14 @@ DBH<-subset(DBH,Block<51)
 IDs<-data.frame(ID1=as.character(unique(DBH$Tree_ID)))
 IDs$ID2<-as.numeric(row.names(IDs))
 
+
 #now give the DBH dataframe a new ID for each tree
 DBH_ID<-NULL
-for (i in 1:nrow(Tree_ID)){
+for (i in 1:nrow(IDs)){
   Tree_sub<-subset(DBH,Tree_ID==as.character(IDs$ID1[i]))
   Tree_sub$ID2<-IDs$ID2[i]
   DBH_ID<-rbind(Tree_sub,DBH_ID)
 }
-
 
 #now create a grid that gives details of each tree in each year
 
@@ -80,7 +80,9 @@ for (i in 1:length(Tree_IDs)){
     Tree_sub2$Dead2[y]<-NA
     }else if (((sum(Tree_sub2$Dead[1:(y-1)],na.rm = T))==0)&&(is.na(Tree_sub2$Dead[y]))){
       Tree_sub2$Dead2[y]<-1
-    } else {
+    } else if (is.na(Tree_sub2$Dead[y-1])&&(Tree_sub2$Dead[y]==0)==T){
+      Tree_sub2$Dead2[y]<-2
+    }else {
     Tree_sub2$Dead2[y]<-0
     }
   }
@@ -116,55 +118,13 @@ for (i in 1:length(Uni_Tree)){
   Tree_dead2<-rbind(Grid_sub,Tree_dead2)
 }
 
-head(Tree_dead2)
-
-Tree_dead3<-subset(Tree_dead2,!is.na(Dead2))
-Tree_dead3<-subset(Tree_dead3,Year>=1988)
-Tree_dead3<-subset(Tree_dead3,GR>-10)
-Tree_dead3<-subset(Tree_dead3,GR<10)
-
-head(Tree_dead3)
-
-summary(Tree_dead2)
-ggplot(Tree_dead3,aes(x=GR))+geom_density()+facet_grid(Dead2~Year)
-ggplot(Tree_dead3,aes(x=relGR))+geom_density()+facet_grid(Dead2~Year)
-ggplot(Tree_dead3,aes(x=relBAGR))+geom_density()+facet_grid(Dead2~Year)
-
-ggplot(Tree_dead3,aes(x=DBH2,y=relGR))+geom_point()+facet_wrap(~Year)+geom_smooth(method="lm")
-
-ggplot(Tree_dead3,aes(x=BAGR,y=Dead2))+geom_point(shape=1)+facet_wrap(~Year)+geom_smooth(family="binomial",method=glm)
-
-ggplot(Tree_dead3,aes(x=DBH2,y=Dead2))+geom_point(shape=1)+facet_wrap(~Year)+geom_smooth(family="binomial",method=glm)
-ggplot(Tree_dead3,aes(x=BA2,y=Dead2))+geom_point(shape=1)+facet_wrap(~Year)+geom_smooth(family="binomial",method=glm)
 
 
-head(Tree_dead3)
-
-M1<-glmer(Dead2~BAGR+(1|ID2),data=Tree_dead3,family=binomial)
-M2<-glmer(Dead2~DBH2+(1|ID2),data=Tree_dead3,family=binomial)
-M3<-glmer(Dead2~DBH2+I(DBH2^2)+(1|ID2),data=Tree_dead3,family=binomial)
-M4<-glmer(Dead2~DBH2+I(DBH2^2)+BAGR+(1|ID2),data=Tree_dead3,family=binomial)
-
-
-AICc(M1,M2,M3,M4)
-r.squaredGLMM(M1)
-
-plot(Tree_dead3$DBH2,plogis(predict(M3,re.form=NA)))
+#add location to mortality data
+keeps<-c("ID2","Easting","Northing","Species")
+DBH_Loc<-DBH_ID[keeps]
+Dead_loc<-merge(Tree_dead2,DBH_Loc,by="ID2")
+Dead_loc<-subset(Dead_loc,!is.na(Dead2))
 
 
-Tree_dead3$DBH2<-round(Tree_dead3$DBH,-1)
-
-Death_rate<-ddply(Tree_dead3,.(Year,DBH2),summarize,Rate=sum(Dead2)/length(Dead2))
-
-Death_rate$Period<-NA
-Death_rate$Period[1]<-20
-for (i in 2:nrow(Death_rate)){
-  Death_rate$Period[i]<-Death_rate$Year[i]-Death_rate$Year[i-1]
-}
-
-Death_rate$Cor_rate<-Death_rate$Rate/Death_rate$Period
-
-ggplot(Death_rate,aes(x=DBH2,y=Rate))+geom_point()+facet_wrap(~Year)
-
-summary(Tree_dead3$Dead2)
-
+write.csv(Dead_loc,"Data/Dead.csv",row.names=F)
