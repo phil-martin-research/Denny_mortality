@@ -122,6 +122,8 @@ for (i in 1:length(Uni_Tree)){
   Tree_dead2<-rbind(Grid_sub,Tree_dead2)
 }
 
+write.csv(Tree_dead2,"Data/Dead.csv",row.names=F)
+
 Tree_dead3<-NULL
 Years<-unique(Tree_dead2$Year)
 for (i in 2:length(Years)){
