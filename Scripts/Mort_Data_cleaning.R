@@ -1,12 +1,6 @@
+rm(list=ls(all=TRUE))
+
 #script to produce clean data for analysis of mortality
-
-#########################################
-#########################################
-#notes:
-#1. Need to come up with a loop that classifies trees as dead/alive correctly
-#this needs to identify them as being dead or alive for the years they were surveyed
-#also need to work out how to deal with new trees
-
 
 library(plyr)
 library(ggplot2)
@@ -22,7 +16,7 @@ library(MuMIn)
 DBH<-read.csv("Data/Denny_trees_cleaned.csv",colClasses=c("Tree_ID"="character"))
 #subset trees to give only those inside plots
 DBH<-subset(DBH,In_out=="In")
-DBH<-subset(DBH,Year>1960)#for the moment remove data from 1959 - but this may need fixing!
+DBH<-subset(DBH,Year>1960)#for the moment remove data from 1959
 DBH<-subset(DBH,Block<51)
 
 IDs<-data.frame(ID1=as.character(unique(DBH$Tree_ID)))
@@ -37,17 +31,8 @@ for (i in 1:nrow(IDs)){
   DBH_ID<-rbind(Tree_sub,DBH_ID)
 }
 
-DBH_test<-subset(DBH_ID,ID2<200&Status==1)
-
-ggplot(DBH_test,aes(x=Year,y=DBH,group=ID2))+geom_point()+geom_line()+facet_wrap(~ID2,scales="free_y")
-
-
 #now create a grid that gives details of each tree in each year
-
-
 Tree_grid<-data.frame(expand.grid(ID2=unique(DBH_ID$ID2),Year=unique(DBH_ID$Year),DBH=NA,BA=NA,Dead=NA))
-
-head(Tree_grid)
 Grid_bind<-NULL
 for (i in 1:nrow(DBH_ID)){
 Grid_sub<-subset(Tree_grid,ID2==DBH_ID$ID2[i])
@@ -57,7 +42,7 @@ Grid_sub$BA<-(Grid_sub$DBH^2)*0.00007854
 Grid_sub$Dead<-DBH_ID$Status[i]
 Grid_bind<-rbind(Grid_sub,Grid_bind)
 }
-
+head(Grid_bind)
 
 
 Tree_grid2<-merge(Tree_grid,Grid_bind,by=c("ID2","Year"),all=T)
@@ -65,7 +50,7 @@ keeps<-c("ID2","Year","DBH.y","BA.y","Dead.y")
 Tree_grid2<-Tree_grid2[keeps]
 colnames(Tree_grid2)<-c("ID2","Year","DBH","BA","Dead")
 Tree_grid2$Dead<-ifelse(Tree_grid2$Dead==1,0,1)
-
+head(Tree_grid2)
 
 #work out whether trees are dead
 #run a loop for each tree to look at rows above
@@ -95,14 +80,6 @@ for (i in 1:length(Tree_IDs)){
   Tree_dead<-rbind(Tree_sub2,Tree_dead)
 }
 
-summary(Tree_dead)
-head(Tree_dead)
-
-
-Tree_dead_test<-subset(Tree_dead,ID2<150)
-
-
-
 #now calculate growth rates
 
 Uni_Tree<-unique(Tree_dead$ID2)
@@ -114,7 +91,6 @@ Tree_dead$relBAGR<-NA
 Tree_dead$DBH2<-NA
 Tree_dead$BA2<-NA
 Tree_dead$relSize<-NA
-ddply(Tree_dead,.(Year),summarize,BA=sum(BA,na.rm = T))
 
 Tree_dead2<-NULL
 for (i in 1:length(Uni_Tree)){
@@ -132,12 +108,6 @@ for (i in 1:length(Uni_Tree)){
   Tree_dead2<-rbind(Grid_sub,Tree_dead2)
 }
 
-#merge this with plot level data
-keeps<-c("ID2","Block")
-DBH_Block<-DBH_ID[keeps]
-
-Tree_block<-merge(Tree_dead2,DBH_Block,by="ID2",all = F)
-Tree_block2<-subset(Tree_block,ID2<100)
 
 Tree_dead3<-NULL
 Years<-data.frame(Year=unique(Tree_dead2$Year),SL=c(NA,20,4,12,18))
@@ -153,16 +123,15 @@ for (i in 1:nrow(Years)){
   Tree_dead3<-rbind(Dead_sub,Tree_dead3)
 }
 
-head(Tree_dead3)
-
-write.csv(Tree_block,"Data/Dead.csv",row.names=F)
+Tree_dead3<-Tree_dead3[with(Tree_dead3, order(ID2, Year)), ]
+write.csv(Tree_dead3,"Data/Dead.csv",row.names=F)
 
 #add location to mortality data
 keeps<-c("ID2","Easting","Northing","Species")
 DBH_Loc<-DBH_ID[keeps]
 DBH_Loc<-unique(DBH_Loc)
-Dead_loc<-merge(Tree_dead3,DBH_Loc,by="ID2")
-Dead_loc<-subset(Dead_loc,!is.na(Dead2))
+Dead_loc<-merge(Tree_dead3,DBH_Loc,by="ID2",all.x=T)
+Dead_loc2<-subset(Dead_loc,!is.na(Dead2))
 head(Dead_loc)
 
 write.csv(Dead_loc,"Data/Dead_size.csv",row.names=F)
