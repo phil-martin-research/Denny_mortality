@@ -8,16 +8,23 @@ library(reshape2)
 
 #load data
 MR<-read.csv("Data/Dead_size.csv")
-MR<-unique(MR)
+head(MR)
 MR<-subset(MR,Species=="Q"|Species=="F"|Species=="I")
-MR$Dead3<-ifelse(MR$Dead2==1,1,0)
-MR$Dead4<-ifelse(MR$Dead3==1,0,1)
+MR<-subset(MR,!is.na(Dead2))
+MR$Dead3<-ifelse(MR$Dead2==1,1,0)#1=dead 0=alive
 MR$Recruit<-ifelse(MR$Dead2==2,1,0)
 
+
+#########################################################
+#calculate mortality rate and bootstrapped CIs for this##
+#based on Margrove et al 2015 - Impacts of an Extreme 
+#Precipitation Event on Dipterocarp Mortality 
+#and Habitat Filtering in a Bornean Tropical Rain Forest
+
 #bootstrap of recruitment for beech 
-head(MR)
 keeps<-c("Year","Species","Dead","Dead3")
 Mort<-MR[keeps]
+head(Mort)
 MR_rows<-unique(Mort[c("Species","Year")])
 MR_rows<-MR_rows[with(MR_rows, order(Species,Year)), ]
 
@@ -25,8 +32,8 @@ MR_rows<-MR_rows[with(MR_rows, order(Species,Year)), ]
 Mort_boot<-NULL
 Boot_results<-NULL
 Species_un<-unique(MR_rows$Species)
-Years_un<-unique(MR_rows$Year)
-for (k in 1:length(Species)){
+Years_un<-sort(unique(MR_rows$Year))
+for (k in 1:length(Species_un)){
   Mort2<-subset(Mort,Species==Species_un[k])
   for (i in 2:length(Years_un)){
   Mort_boot2<-NULL
@@ -52,9 +59,9 @@ Boot_results$Period2<-factor(Boot_results$Period,c("1964-1984","1984-1988","1988
 
 #plot bootstrapped mortality estimates
 theme_set(theme_bw(base_size=12))
-Mort<-ggplot(Boot_results,aes(x=Period2,y=Mort*100,ymax=Mort_UCI*100,ymin=Mort_LCI*100,colour=Species))+geom_pointrange(position=position_dodge(width=0.1))
-Mort2<-Mort+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))
-Mort2+ylab("Precentage annual mortality")+xlab("Time period")
+Mort_plot<-ggplot(Boot_results,aes(x=Period2,y=Mort*100,ymax=Mort_UCI*100,ymin=Mort_LCI*100,colour=Species))+geom_pointrange(position=position_dodge(width=0.1))
+Mort_plot2<-Mort_plot+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))
+Mort_plot2+ylab("Precentage annual mortality")+xlab("Time period")
 ggsave("Figures/Annual_mortality.png",height=4,width=6,dpi=1200,units="in")
 
 
