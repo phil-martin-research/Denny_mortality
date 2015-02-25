@@ -66,60 +66,9 @@ ggsave("Figures/Annual_mortality.png",height=4,width=6,dpi=1200,units="in")
 
 
 
-
-Mort<-NULL
-for (i in 1:10000){
-  Mort_sample<-sample(M_1984$Dead3,size = nrow(M_1964),replace = T)
-  T<-20
-  Val<-1-(((nrow(M_1964)-sum(Mort_sample))/nrow(M_1964))^(1/T))
-  Mort<-rbind(Val,Mort)
-}
-quantile(Mort,probs = c(0.025,0.975))
-
-    
-    head(M_sub)
-
-#get the mortality rate for different species
-Mort_summ<-ddply(MR,.(Year,Species,Dead3),summarize,No=length(Dead3))
-
 #now get recruitment rate
 MR2<-subset(MR,Dead3==0)
 Rec_summ<-ddply(MR2,.(Year,Species,Recruit),summarize,No=length(Recruit))
-
-#look at balance of recruitment vs mortality
-Rec<-subset(Rec_summ,Recruit==1)
-Mort<-subset(Mort_summ,Dead3==1)
-
-Bal<-merge(Mort,Rec,by=c("Year","Species"),all=T)
-
-drops<-c("Dead3","Recruit")
-Bal<-Bal[,!(names(Bal) %in% drops)]
-colnames(Bal)<-c("Year","Species","Mort","Rec")
-Bal$Rec<-ifelse(is.na(Bal$Rec),0,Bal$Rec)
-Bal$Diff<-Bal$Rec-Bal$Mort
-Bal<-subset(Bal,Year>1964)
-#now plot this difference
-ggplot(Bal,aes(x=Year,y=Diff,colour=Species,group=Species))+geom_point(size=3)+geom_line()
-
-#calculate mortality per species per period
-Mort_species2<-NULL
-MR_rows<-unique(Mort_summ[c("Species")])
-for (i in 1:nrow(MR_rows)){
-  Mort_species<-subset(Mort_summ,Species==MR_rows$Species[i])
-  Mort_species$MR<-NA
-  for (y in 3:nrow(Mort_species)){
-    if (Mort_species$Dead3[y]==1){
-      T<-(Mort_species$Year[y]-Mort_species$Year[y-3])
-      Mort_species$MR[y]<-1-(((Mort_species$No[y-3]-Mort_species$No[y])/Mort_species$No[y-3])^(1/T))
-    }
-    }
-  Mort_species2<-rbind(Mort_species,Mort_species2)
-  }
-
-
-Mort_rate<-subset(Mort_species2,!is.na(MR))
-
-ggplot(Mort_rate,aes(x=Year,y=MR,colour=Species,group=Species))+geom_point(size=3)+geom_line()
 
 
 #calculate recruitment per species per period
@@ -137,3 +86,44 @@ for (i in 1:nrow(Rec_rows)){
   }
   Rec_species2<-rbind(Rec_species,Rec_species2)
 }
+
+
+####
+#bootstrap of recruitment for beech 
+keeps<-c("Year","Species","Dead","Recruit")
+Rec<-MR[keeps]
+head(Rec)
+Rec_rows<-unique(Rec[c("Species","Year")])
+Rec_rows<-Rec_rows[with(Rec_rows, order(Species,Year)), ]
+
+
+
+Mort_boot<-NULL
+
+
+Boot_results<-NULL
+Species_un<-unique(Rec_rows$Species)
+Years_un<-sort(unique(Rec_rows$Year))
+for (k in 1:length(Species_un)){
+  Rec2<-subset(Rec,Species==Species_un[k])
+  for (i in 2:length(Years_un)){
+    Rec_boot2<-NULL
+    N0<-subset(Rec2,Year==Years_un[i-1])#number alive at time step 0
+    N1<-subset(Rec2,Year==Years_un[i]) #number of recruits at time step 1
+    for (j in 1:10000){
+      N0_alive<-nrow(N0)-sum(N0$Dead,na.rm = T)
+      Rec_sample<-sample(N1$Recruit,size=N0_alive,replace = T)
+      T<-Years_un[i]-Years_un[i-1]
+      Val<-1-(((N0_alive-sum(Rec_sample))/N0_alive)^(1/T))
+      Rec_boot2<-rbind(Val,Rec_boot2) 
+    }
+    Rec_boot<-data.frame(Period=as.character(paste(Years_un[i-1],"-",Years_un[i],sep="")),
+                          Species=as.character(Species_un[k]),
+                          Mort=quantile(Rec_boot2,probs = c(0.025,0.5,0.975))[2],
+                          Mort_UCI=quantile(Rec_boot2,probs = c(0.025,0.5,0.975))[3],
+                          Mort_LCI=quantile(Rec_boot2,probs = c(0.025,0.5,0.975))[1])
+    Boot_results<-rbind(Rec_boot,Boot_results)
+  }
+}
+
+head(Boot_results)
