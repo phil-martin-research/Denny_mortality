@@ -11,8 +11,66 @@ MR<-read.csv("Data/Dead_size.csv")
 MR<-unique(MR)
 MR<-subset(MR,Species=="Q"|Species=="F"|Species=="I")
 MR$Dead3<-ifelse(MR$Dead2==1,1,0)
+MR$Dead4<-ifelse(MR$Dead3==1,0,1)
 MR$Recruit<-ifelse(MR$Dead2==2,1,0)
 
+#bootstrap of recruitment for beech 
+head(MR)
+keeps<-c("Year","Species","Dead","Dead3")
+Mort<-MR[keeps]
+MR_rows<-unique(Mort[c("Species","Year")])
+MR_rows<-MR_rows[with(MR_rows, order(Species,Year)), ]
+
+#run a loop to get bootstrap CIs for each of these estimates
+Mort_boot<-NULL
+Boot_results<-NULL
+Species_un<-unique(MR_rows$Species)
+Years_un<-unique(MR_rows$Year)
+for (k in 1:length(Species)){
+  Mort2<-subset(Mort,Species==Species_un[k])
+  for (i in 2:length(Years_un)){
+  Mort_boot2<-NULL
+  N0<-subset(Mort2,Year==Years_un[i-1])
+  N1<-subset(Mort2,Year==Years_un[i])
+  for (j in 1:10000){
+    N0_alive<-nrow(N0)-sum(N0$Dead,na.rm = T)
+    Mort_sample<-sample(N1$Dead3,size=N0_alive,replace = T)
+    T<-Years_un[i]-Years_un[i-1]
+    Val<-1-(((N0_alive-sum(Mort_sample))/N0_alive)^(1/T))
+    Mort_boot2<-rbind(Val,Mort_boot2) 
+  }
+  Mort_boot<-data.frame(Period=as.character(paste(Years_un[i-1],"-",Years_un[i],sep="")),
+                        Species=as.character(Species_un[k]),
+                        Mort=quantile(Mort_boot2,probs = c(0.025,0.5,0.975))[2],
+                        Mort_UCI=quantile(Mort_boot2,probs = c(0.025,0.5,0.975))[3],
+                        Mort_LCI=quantile(Mort_boot2,probs = c(0.025,0.5,0.975))[1])
+  Boot_results<-rbind(Mort_boot,Boot_results)
+}
+}
+
+Boot_results$Period2<-factor(Boot_results$Period,c("1964-1984","1984-1988","1988-1996","1996-2014"))
+
+#plot bootstrapped mortality estimates
+theme_set(theme_bw(base_size=12))
+Mort<-ggplot(Boot_results,aes(x=Period2,y=Mort*100,ymax=Mort_UCI*100,ymin=Mort_LCI*100,colour=Species))+geom_pointrange(position=position_dodge(width=0.1))
+Mort2<-Mort+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))
+Mort2+ylab("Precentage annual mortality")+xlab("Time period")
+ggsave("Figures/Annual_mortality.png",height=4,width=6,dpi=1200,units="in")
+
+
+
+
+Mort<-NULL
+for (i in 1:10000){
+  Mort_sample<-sample(M_1984$Dead3,size = nrow(M_1964),replace = T)
+  T<-20
+  Val<-1-(((nrow(M_1964)-sum(Mort_sample))/nrow(M_1964))^(1/T))
+  Mort<-rbind(Val,Mort)
+}
+quantile(Mort,probs = c(0.025,0.975))
+
+    
+    head(M_sub)
 
 #get the mortality rate for different species
 Mort_summ<-ddply(MR,.(Year,Species,Dead3),summarize,No=length(Dead3))
