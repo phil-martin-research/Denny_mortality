@@ -10,7 +10,6 @@
 
 library(plyr)
 library(ggplot2)
-library(lme4)
 library(MuMIn)
 
 #different measures of growth to include
@@ -37,6 +36,11 @@ for (i in 1:nrow(IDs)){
   Tree_sub$ID2<-IDs$ID2[i]
   DBH_ID<-rbind(Tree_sub,DBH_ID)
 }
+
+DBH_test<-subset(DBH_ID,ID2<200&Status==1)
+
+ggplot(DBH_test,aes(x=Year,y=DBH,group=ID2))+geom_point()+geom_line()+facet_wrap(~ID2,scales="free_y")
+
 
 #now create a grid that gives details of each tree in each year
 
@@ -95,6 +99,10 @@ summary(Tree_dead)
 head(Tree_dead)
 
 
+Tree_dead_test<-subset(Tree_dead,ID2<150)
+
+
+
 #now calculate growth rates
 
 Uni_Tree<-unique(Tree_dead$ID2)
@@ -129,13 +137,13 @@ keeps<-c("ID2","Block")
 DBH_Block<-DBH_ID[keeps]
 
 Tree_block<-merge(Tree_dead2,DBH_Block,by="ID2",all = F)
-
-write.csv(Tree_block,"Data/Dead.csv",row.names=F)
+Tree_block2<-subset(Tree_block,ID2<100)
 
 Tree_dead3<-NULL
-Years<-unique(Tree_dead2$Year)
-for (i in 2:length(Years)){
-  Dead_sub<-subset(Tree_dead2,Year==Years[i])
+Years<-data.frame(Year=unique(Tree_dead2$Year),SL=c(NA,20,4,12,18))
+for (i in 1:nrow(Years)){
+  Dead_sub<-subset(Tree_dead2,Year==Years$Year[i])
+  Dead_sub$SL<-Years$SL[i]
   for (j in 1:nrow(Dead_sub)){
     BA_sub<-subset(Dead_sub,BA2<Dead_sub$BA2[j])
     BA_sum<-sum(BA_sub$BA2,na.rm = T)
@@ -147,12 +155,14 @@ for (i in 2:length(Years)){
 
 head(Tree_dead3)
 
+write.csv(Tree_block,"Data/Dead.csv",row.names=F)
+
 #add location to mortality data
 keeps<-c("ID2","Easting","Northing","Species")
 DBH_Loc<-DBH_ID[keeps]
 DBH_Loc<-unique(DBH_Loc)
-Dead_loc<-merge(Tree_dead3,DBH_Loc,by="ID2",all = F)
+Dead_loc<-merge(Tree_dead3,DBH_Loc,by="ID2")
 Dead_loc<-subset(Dead_loc,!is.na(Dead2))
-
+head(Dead_loc)
 
 write.csv(Dead_loc,"Data/Dead_size.csv",row.names=F)
