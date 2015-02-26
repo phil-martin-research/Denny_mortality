@@ -5,6 +5,8 @@ rm(list=ls(all=TRUE))
 library(plyr)
 library(ggplot2)
 library(MuMIn)
+library(sp)
+library(spatstat)
 
 #different measures of growth to include
 #1. GR- mm growth per year
@@ -132,6 +134,74 @@ DBH_Loc<-DBH_ID[keeps]
 DBH_Loc<-unique(DBH_Loc)
 Dead_loc<-merge(Tree_dead3,DBH_Loc,by="ID2",all.x=T)
 Dead_loc2<-subset(Dead_loc,!is.na(Dead2))
-head(Dead_loc)
+Dead_loc2<-subset(Dead_loc2,Species=="Q"|Species=="F"|Species=="I")
+head(Dead_loc2)
+
+############################################
+#test to work out distance to nearest dead 
+#tree of same species in previous time point
+
+library(rgeos)
+library(dismo)
+library(raster)
+library(rgeos)
+
+F_64<-subset(Dead_loc,Year==1964&Species=="F"&Dead2==1)
+F_84<-subset(Dead_loc,Year==1984&Species=="F")
+
+
+dist(F_84[,c('Easting','Northing')])
+
+
+a <- SpatialPoints(coords = data.frame(x = F_84$Easting, y =F_84$Northing ))
+b <- SpatialPoints(coords = data.frame(x = F_64$Easting, y =F_64$Northing ))
+min(results[1,1:94])
+results <- spDists(a, b, longlat=F)
+
+results<-ifelse(results==0,NA,results)
+summary(results)
+#loop this up
+
+SU<-unique(Dead_loc2$Species)
+Yr<-unique(Dead_loc2$Year)
+Years<-NULL
+Years2<-NULL
+for (i in 1:length(Species)){
+  Sub_sp<-subset(Dead_loc2,Species==SU[i])
+  for (j in 3:length(Yr)){
+    Yr1<-subset(Sub_sp,Year==Yr[j-1]&Dead2==1)
+    Yr2<-subset(Sub_sp,Year==Yr[j])
+    Yr2$Dead_dist<-NA
+    a <- SpatialPointsDataFrame(coords = data.frame(x = Yr2$Easting, y =Yr2$Northing ),data=data.frame(Yr2$BA))
+    b <- SpatialPointsDataFrame(coords = data.frame(x = Yr1$Easting, y =Yr1$Northing ),data=data.frame(Yr1$BA))
+    
+    
+    results <- spDists(a, b, longlat=F)  
+    results<-ifelse(results==0,NA,results)
+    
+    for (k in 1:nrow(results)){    
+      Yr2$Dead_dist[k]<-min(results[k,1:ncol(results)],na.rm = T)
+    }
+    Years<-rbind(Years,Yr2)
+  }
+  Years2<-rbind(Years,Years2)
+}
+
+
+
+
+buffer<- gBuffer( a, width=10, byid=TRUE )
+str(buffer)
+points(Yr2$Easting,Yr2$Northing)
+points(b,col="red")
+extract(b,buffer)
+
+sapply(over(buffer, geometry(b), returnList = TRUE), length)
+
+
+over(buffer,b,fn=sum)
+
+?over
+table(res$NAME_1)
 
 write.csv(Dead_loc,"Data/Dead_size.csv",row.names=F)
