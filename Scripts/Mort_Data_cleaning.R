@@ -170,38 +170,30 @@ for (i in 1:length(Species)){
   Sub_sp<-subset(Dead_loc2,Species==SU[i])
   for (j in 3:length(Yr)){
     Yr1<-subset(Sub_sp,Year==Yr[j-1]&Dead2==1)
+    Yr1_live<-subset(Sub_sp,Year==Yr[j-1]&Dead2!=1)
     Yr2<-subset(Sub_sp,Year==Yr[j])
     Yr2$Dead_dist<-NA
     a <- SpatialPointsDataFrame(coords = data.frame(x = Yr2$Easting, y =Yr2$Northing ),data=data.frame(Yr2$BA))
-    b <- SpatialPointsDataFrame(coords = data.frame(x = Yr1$Easting, y =Yr1$Northing ),data=data.frame(Yr1$BA))
-    
-    
+    b <- SpatialPointsDataFrame(coords = data.frame(x = Yr1$Easting, y =Yr1$Northing ),data=data.frame(Yr1$BA2))
+    c <- SpatialPointsDataFrame(coords = data.frame(x = Yr1_live$Easting, y =Yr1_live$Northing ),data=data.frame(Yr1_live$BA2))
+    buffer<- gBuffer( a, width=10, byid=TRUE )
+    Yr2$Dead_No<-as.numeric(sapply(over(buffer, geometry(b), returnList = TRUE), length))
+    Yr2$Dead_BA<-as.numeric(over(buffer,b,fn=sum)[,1])
+    Yr2$Live_No<-as.numeric(sapply(over(buffer, geometry(c), returnList = TRUE), length))
+    Yr2$Live_BA<-as.numeric(over(buffer,c,fn=sum)[,1])
     results <- spDists(a, b, longlat=F)  
     results<-ifelse(results==0,NA,results)
-    
     for (k in 1:nrow(results)){    
       Yr2$Dead_dist[k]<-min(results[k,1:ncol(results)],na.rm = T)
     }
     Years<-rbind(Years,Yr2)
+    
   }
   Years2<-rbind(Years,Years2)
 }
 
+Years2$Dead_BA<-ifelse(is.na(Years2$Dead_BA),0,Years2$Dead_BA)
+Years2$Live_BA<-ifelse(is.na(Years2$Live_BA),0,Years2$Live_BA)
 
-
-
-buffer<- gBuffer( a, width=10, byid=TRUE )
-str(buffer)
-points(Yr2$Easting,Yr2$Northing)
-points(b,col="red")
-extract(b,buffer)
-
-sapply(over(buffer, geometry(b), returnList = TRUE), length)
-
-
-over(buffer,b,fn=sum)
-
-?over
-table(res$NAME_1)
 
 write.csv(Dead_loc,"Data/Dead_size.csv",row.names=F)
