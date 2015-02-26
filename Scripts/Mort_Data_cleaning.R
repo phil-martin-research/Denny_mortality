@@ -175,7 +175,7 @@ for (i in 1:length(Species)){
     Yr2$Dead_dist<-NA
     a <- SpatialPointsDataFrame(coords = data.frame(x = Yr2$Easting, y =Yr2$Northing ),data=data.frame(Yr2$BA))
     b <- SpatialPointsDataFrame(coords = data.frame(x = Yr1$Easting, y =Yr1$Northing ),data=data.frame(Yr1$BA2))
-    c <- SpatialPointsDataFrame(coords = data.frame(x = Yr1_live$Easting, y =Yr1_live$Northing ),data=data.frame(Yr1_live$BA2))
+    c <- SpatialPointsDataFrame(coords = data.frame(x = Yr1_live$Easting, y =Yr1_live$Northing ),data=data.frame(Yr1_live$BA))
     buffer<- gBuffer( a, width=10, byid=TRUE )
     Yr2$Dead_No<-as.numeric(sapply(over(buffer, geometry(b), returnList = TRUE), length))
     Yr2$Dead_BA<-as.numeric(over(buffer,b,fn=sum)[,1])
@@ -196,4 +196,4 @@ Years2$Dead_BA<-ifelse(is.na(Years2$Dead_BA),0,Years2$Dead_BA)
 Years2$Live_BA<-ifelse(is.na(Years2$Live_BA),0,Years2$Live_BA)
 
 
-write.csv(Dead_loc,"Data/Dead_size.csv",row.names=F)
+write.csv(Years2,"Data/Dead_size.csv",row.names=F)
