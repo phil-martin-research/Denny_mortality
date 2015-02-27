@@ -57,39 +57,20 @@ for (k in 1:length(Species_un)){
 
 Boot_results$Period2<-factor(Boot_results$Period,c("1964-1984","1984-1988","1988-1996","1996-2014"))
 
+Mort_results<-Boot_results
+
 #plot bootstrapped mortality estimates
 theme_set(theme_bw(base_size=12))
-Mort_plot<-ggplot(Boot_results,aes(x=Period2,y=Mort*100,ymax=Mort_UCI*100,ymin=Mort_LCI*100,colour=Species))+geom_pointrange(position=position_dodge(width=0.1))
+Mort_plot<-ggplot(Mort_results,aes(x=Period2,y=Mort*100,ymax=Mort_UCI*100,ymin=Mort_LCI*100,colour=Species))+geom_pointrange(position=position_dodge(width=0.1))
 Mort_plot2<-Mort_plot+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))
 Mort_plot2+ylab("Precentage annual mortality")+xlab("Time period")
 ggsave("Figures/Annual_mortality.png",height=4,width=6,dpi=1200,units="in")
 
 
 
-#now get recruitment rate
-MR2<-subset(MR,Dead3==0)
-Rec_summ<-ddply(MR2,.(Year,Species,Recruit),summarize,No=length(Recruit))
-
-
-#calculate recruitment per species per period
-Rec_species2<-NULL
-Rec_rows<-unique(Rec_summ[c("Species")])
-for (i in 1:nrow(Rec_rows)){
-  Rec_species<-subset(Rec_summ,Species==Rec_rows$Species[1])
-  Rec_species$RR<-NA
-  Years<-unique(Rec_species$Year)
-  for (y in 3:nrow(Rec_species)){
-    if (Rec_species$Recruit[y]==1){
-      T<-(Rec_species$Year[y]-Rec_species$Year[y-3])
-      Rec_species$MR[y]<-1-(((Rec_species$No[y-3]-Rec_species$No[y])/Rec_species$No[y-3])^(1/T))
-    }
-  }
-  Rec_species2<-rbind(Rec_species,Rec_species2)
-}
-
 
 ####
-#bootstrap of recruitment for beech 
+#bootstrap of recruitment
 keeps<-c("Year","Species","Dead","Recruit")
 Rec<-MR[keeps]
 head(Rec)
@@ -98,11 +79,9 @@ Rec_rows<-Rec_rows[with(Rec_rows, order(Species,Year)), ]
 
 
 
-Mort_boot<-NULL
-
-
+Rec_boot<-NULL
 Boot_results<-NULL
-Species_un<-unique(Rec_rows$Species)
+Species_un<-as.character(unique(Rec_rows$Species))
 Years_un<-sort(unique(Rec_rows$Year))
 for (k in 1:length(Species_un)){
   Rec2<-subset(Rec,Species==Species_un[k])
@@ -119,11 +98,35 @@ for (k in 1:length(Species_un)){
     }
     Rec_boot<-data.frame(Period=as.character(paste(Years_un[i-1],"-",Years_un[i],sep="")),
                           Species=as.character(Species_un[k]),
-                          Mort=quantile(Rec_boot2,probs = c(0.025,0.5,0.975))[2],
-                          Mort_UCI=quantile(Rec_boot2,probs = c(0.025,0.5,0.975))[3],
-                          Mort_LCI=quantile(Rec_boot2,probs = c(0.025,0.5,0.975))[1])
+                          Rec=quantile(Rec_boot2,probs = c(0.025,0.5,0.975))[2],
+                          Rec_UCI=quantile(Rec_boot2,probs = c(0.025,0.5,0.975))[3],
+                          Rec_LCI=quantile(Rec_boot2,probs = c(0.025,0.5,0.975))[1])
     Boot_results<-rbind(Rec_boot,Boot_results)
   }
 }
 
 head(Boot_results)
+
+#plot bootstrapped recruitment estimates
+Boot_results$Period2<-factor(Boot_results$Period,c("1964-1984","1984-1988","1988-1996","1996-2014"))
+Rec_results<-Boot_results
+Mort_results
+
+theme_set(theme_bw(base_size=12))
+Rec_plot<-ggplot(Rec_results,aes(x=Period2,y=Rec*100,ymax=Rec_UCI*100,ymin=Rec_LCI*100,colour=Species))+geom_pointrange(position=position_dodge(width=0.1))
+Rec_plot2<-Rec_plot+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))
+Rec_plot2+ylab("Percentage annual recruitment")+xlab("Time period")
+ggsave("Figures/Annual_recruitment.png",height=4,width=6,dpi=1200,units="in")
+
+Rec_results$Change<-Rec_results$Rec-Mort_results$Mort
+Rec_results$Change_UCI<-Rec_results$Rec_UCI-Mort_results$Mort_LCI
+Rec_results$Change_LCI<-Rec_results$Rec_LCI-Mort_results$Mort_UCI
+
+#now plot percentage change in populations
+theme_set(theme_bw(base_size=12))
+Change_plot<-ggplot(Rec_results,aes(x=Period2,y=Change*100,ymax=Change_UCI*100,ymin=Change_LCI*100,colour=Species))+geom_pointrange(position=position_dodge(width=0.1))
+Change_plot2<-Change_plot+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))
+Change_plot2+ylab("Percentage annual change in population")+xlab("Time period")
+ggsave("Figures/Annual_change.png",height=4,width=6,dpi=1200,units="in")
+
+
