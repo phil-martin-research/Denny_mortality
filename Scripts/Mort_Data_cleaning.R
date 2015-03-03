@@ -74,13 +74,46 @@ for (i in 1:length(Tree_IDs)){
     }else if (((sum(Tree_sub2$Dead[1:(y-1)],na.rm = T))==0)&&(is.na(Tree_sub2$Dead[y]))){
       Tree_sub2$Dead2[y]<-1
     } else if (is.na(Tree_sub2$Dead[y-1])&&(Tree_sub2$Dead[y]==0)==T){
-      Tree_sub2$Dead2[y]<-2
+      Tree_sub2$Dead2[y]<-0
     }else {
     Tree_sub2$Dead2[y]<-0
     }
   }
   Tree_dead<-rbind(Tree_sub2,Tree_dead)
 }
+Tree_dead<-Tree_dead[with(Tree_dead, order(ID2,Year)), ]
+head(Tree_dead)
+
+#now add a column to identify dead trees to work out
+#cumulative number of dead trees over time and space
+
+Tree_dead2<-NULL
+Tree_dead$Dead_cum<-NA
+Tree_dead$Dead3<-Tree_dead$Dead2
+Tree_dead$Dead3<-ifelse(Tree_dead$Dead3==0,0,Tree_dead$Dead3)
+for (i in 1:length(Tree_IDs)){
+  Tree_sub<-subset(Tree_dead,ID2==Tree_IDs[i])
+  for (j in 1:nrow(Tree_sub)){
+    if ((sum(Tree_sub$Dead3[1:j-1],na.rm = T)>=0)&&(Tree_sub$Dead3[j]==1)==T){
+      Tree_sub$Dead_cum[j]<-1
+    }else{
+      Tree_sub$Dead_cum[j]<-0
+  }
+}
+for (j in 2:nrow(Tree_sub)){
+  if (sum(Tree_sub$Dead3[1:j],na.rm = T)>=1){
+    Tree_sub$Dead_cum[j]<-1
+  }else{
+    Tree_sub$Dead_cum[j]<-0
+}
+}
+Tree_dead2<-rbind(Tree_sub,Tree_dead2)
+}
+
+Tree_dead2<-Tree_dead2[with(Tree_dead2, order(ID2,Year)), ]
+head(Tree_dead2)
+
+Tree_dead<-Tree_dead2
 
 #now calculate growth rates
 
@@ -109,7 +142,6 @@ for (i in 1:length(Uni_Tree)){
   }
   Tree_dead2<-rbind(Grid_sub,Tree_dead2)
 }
-
 
 Tree_dead3<-NULL
 Years<-data.frame(Year=unique(Tree_dead2$Year),SL=c(NA,20,4,12,18))
@@ -166,7 +198,7 @@ SU<-unique(Dead_loc2$Species)
 Yr<-unique(Dead_loc2$Year)
 Years<-NULL
 Years2<-NULL
-for (i in 1:length(Species)){
+for (i in 1:length(SU)){
   Sub_sp<-subset(Dead_loc2,Species==SU[i])
   for (j in 3:length(Yr)){
     Yr1<-subset(Sub_sp,Year==Yr[j-1]&Dead2==1)
@@ -194,6 +226,5 @@ for (i in 1:length(Species)){
 
 Years2$Dead_BA<-ifelse(is.na(Years2$Dead_BA),0,Years2$Dead_BA)
 Years2$Live_BA<-ifelse(is.na(Years2$Live_BA),0,Years2$Live_BA)
-
 
 write.csv(Years2,"Data/Dead_size.csv",row.names=F)
