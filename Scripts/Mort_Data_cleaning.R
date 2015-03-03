@@ -93,13 +93,7 @@ Tree_dead$Dead3<-Tree_dead$Dead2
 Tree_dead$Dead3<-ifelse(Tree_dead$Dead3==0,0,Tree_dead$Dead3)
 for (i in 1:length(Tree_IDs)){
   Tree_sub<-subset(Tree_dead,ID2==Tree_IDs[i])
-  for (j in 1:nrow(Tree_sub)){
-    if ((sum(Tree_sub$Dead3[1:j-1],na.rm = T)>=0)&&(Tree_sub$Dead3[j]==1)==T){
-      Tree_sub$Dead_cum[j]<-1
-    }else{
-      Tree_sub$Dead_cum[j]<-0
-  }
-}
+  Tree_sub$Dead_cum<-Tree_sub$Dead3
 for (j in 2:nrow(Tree_sub)){
   if (sum(Tree_sub$Dead3[1:j],na.rm = T)>=1){
     Tree_sub$Dead_cum[j]<-1
@@ -164,8 +158,8 @@ write.csv(Tree_dead3,"Data/Dead.csv",row.names=F)
 keeps<-c("ID2","Easting","Northing","Species")
 DBH_Loc<-DBH_ID[keeps]
 DBH_Loc<-unique(DBH_Loc)
+DBH_Loc<-DBH_Loc[with(DBH_Loc, order(ID2)), ]
 Dead_loc<-merge(Tree_dead3,DBH_Loc,by="ID2",all.x=T)
-Dead_loc2<-subset(Dead_loc,!is.na(Dead2))
 Dead_loc2<-subset(Dead_loc2,Species=="Q"|Species=="F"|Species=="I")
 head(Dead_loc2)
 
@@ -178,21 +172,9 @@ library(dismo)
 library(raster)
 library(rgeos)
 
-F_64<-subset(Dead_loc,Year==1964&Species=="F"&Dead2==1)
-F_84<-subset(Dead_loc,Year==1984&Species=="F")
-
-
-dist(F_84[,c('Easting','Northing')])
-
-
-a <- SpatialPoints(coords = data.frame(x = F_84$Easting, y =F_84$Northing ))
-b <- SpatialPoints(coords = data.frame(x = F_64$Easting, y =F_64$Northing ))
-min(results[1,1:94])
-results <- spDists(a, b, longlat=F)
-
-results<-ifelse(results==0,NA,results)
-summary(results)
-#loop this up
+#loop to test distance to nearest dead tree
+#needs changing to get cumulative number of dead
+#trees
 
 SU<-unique(Dead_loc2$Species)
 Yr<-unique(Dead_loc2$Year)
