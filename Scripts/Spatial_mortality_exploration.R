@@ -10,9 +10,9 @@ rm(list=ls(all=TRUE))
 Mort<-read.csv("Data/Dead_size.csv")
 Mort<-unique(Mort)
 head(Mort)
-keeps<-c("ID2","Year","Northing","Easting","Dead_cum","Species")
+keeps<-c("ID2","Year","Northing","Easting","Dead_cum2","Species")
 
-ggplot(Mort,aes(x=Easting,y=Northing,colour=as.factor(Dead_cum),size=DBH))+geom_point(shape=1)+facet_grid(Species~Year)
+ggplot(Mort,aes(x=Easting,y=Northing,colour=as.factor(Dead_cum2)))+geom_point(shape=1)+facet_grid(Species~Year)
 
 Beech_mort<-subset(Mort,Species=="F")
 
