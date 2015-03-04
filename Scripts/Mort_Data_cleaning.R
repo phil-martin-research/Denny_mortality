@@ -168,8 +168,13 @@ DBH_Loc<-unique(DBH_Loc)
 DBH_Loc<-DBH_Loc[with(DBH_Loc, order(ID2)), ]
 Dead_loc<-merge(Tree_dead4,DBH_Loc,by="ID2",all.x=T)
 Dead_loc2<-subset(Dead_loc,Species=="Q"|Species=="F"|Species=="I")
+Dead_loc2$Dead2<-ifelse(is.na(Dead_loc2$Dead),0,Dead_loc2$Dead2)
+Dead_loc2$Dead_cum2<-Dead_loc2$Dead_cum-Dead_loc2$Dead2
 head(Dead_loc2)
-Dead_loc2$Dead_cum<-ifelse(Dead_loc2$Dead==1,0,Dead_loc2$Dead_cum)
+summary(Dead_loc2)
+
+ggplot(Dead_loc2,aes(x=Easting,y=Northing,colour=as.factor(Dead_cum2)))+geom_point(shape=1)+facet_grid(Species~Year)
+
 
 ############################################
 #test to work out distance to nearest dead 
@@ -191,15 +196,20 @@ Years2<-NULL
 for (i in 1:length(SU)){
   Sub_sp<-subset(Dead_loc2,Species==SU[i])
   for (j in 3:length(Yr)){
-    if (nrow(subset(Sub_sp,Year==Yr[j-1]&Dead_cum==1))>0){
-    Yr1<-subset(Sub_sp,Year==Yr[j-1]&Dead_cum==1)
+    if (nrow(subset(Sub_sp,Year==Yr[j-1]&Dead_cum2==1))>0){
+    Yr1<-subset(Sub_sp,Year==Yr[j-1]&Dead_cum2==1)
     Yr2<-subset(Sub_sp,Year==Yr[j])
     Yr2$Dead_dist<-NA
     a <- SpatialPointsDataFrame(coords = data.frame(x = Yr2$Easting, y =Yr2$Northing ),data=data.frame(Yr2$BA))
-    b <- SpatialPointsDataFrame(coords = data.frame(x = Yr1$Easting, y =Yr1$Northing ),data=data.frame(Yr1$BA2))
+    b <- SpatialPointsDataFrame(coords = data.frame(x = Yr1$Easting, y =Yr1$Northing ),data=data.frame(Yr1$BA))
+    plot(a)
+    points(b,col="red")
     buffer<- gBuffer( a, width=10, byid=TRUE )
+    plot(buffer)
+    points(a,col="red",)
+    
     Yr2$Dead_No<-as.numeric(sapply(over(buffer, geometry(b), returnList = TRUE), length))
-    Yr2$Dead_BA<-as.numeric(over(buffer,b,fn=sum)[,1])
+    #Yr2$Dead_BA<-as.numeric(over(buffer,b,fn=sum)[,1])
     results <- spDists(a, b, longlat=F)  
     results<-ifelse(results==0,NA,results)
     for (k in 1:nrow(results)){    
@@ -208,7 +218,7 @@ for (i in 1:length(SU)){
     }else{
       Yr2<-subset(Sub_sp,Year==Yr[j])
       Yr2$Dead_No<-0
-      Yr2$Dead_BA<-0
+      #Yr2$Dead_BA<-0
       Yr2$Dead_dist<-NA
     }
     Years<-rbind(Years,Yr2)
