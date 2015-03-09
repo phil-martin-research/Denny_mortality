@@ -11,8 +11,17 @@ Mort<-read.csv("Data/Dead_size.csv")
 Mort<-unique(Mort)
 head(Mort)
 keeps<-c("ID2","Year","Northing","Easting","Dead_cum2","Species")
+Mort_F<-subset(Mort,Species=="F")
+head(Mort_F)
 
-ggplot(Mort,aes(x=Easting,y=Northing,colour=as.factor(Dead_cum2)))+geom_point(shape=1)+facet_grid(Species~Year)
+theme_set(theme_bw(base_size=12))
+ggplot(Mort_F,aes(x=Easting,y=Northing,colour=as.factor(Dead_cum2)))+geom_point(shape=1,size=0.5,alpha=0.5)+facet_wrap(~Year)+scale_colour_manual(values = c("green","red"))+ theme(legend.position="none")+coord_fixed()+ 
+  theme(axis.text.x=element_blank(),
+        axis.text.y=element_blank(),axis.ticks=element_blank(),
+        axis.title.x=element_blank(),
+        axis.title.y=element_blank())+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))
+ggsave("Figures/Spat_mortality.png",width = 6,height=6,units = "in",dpi=300)
+
 
 Beech_mort<-subset(Mort,Species=="F")
 
