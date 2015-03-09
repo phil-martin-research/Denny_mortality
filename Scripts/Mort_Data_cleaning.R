@@ -176,6 +176,8 @@ summary(Dead_loc2)
 ggplot(Dead_loc2,aes(x=Easting,y=Northing,colour=as.factor(Dead_cum2)))+geom_point(shape=1)+facet_grid(Species~Year)
 
 
+write.csv(Dead_loc2,"Data/Dead_spat.csv",row.names=F)
+
 ############################################
 #test to work out distance to nearest dead 
 #tree of same species in previous time point
@@ -195,7 +197,7 @@ Years<-NULL
 Years2<-NULL
 for (i in 1:length(SU)){
   Sub_sp<-subset(Dead_loc2,Species==SU[i])
-  for (j in 3:length(Yr)){
+  for (j in 2:length(Yr)){
     if (nrow(subset(Sub_sp,Year==Yr[j-1]&Dead_cum2==1))>0){
     Yr1<-subset(Sub_sp,Year==Yr[j-1]&Dead_cum2==1)
     Yr2<-subset(Sub_sp,Year==Yr[j])
