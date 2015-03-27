@@ -63,21 +63,20 @@ ggsave("Figures/Spat_mortality.png",width = 12,height=6,units = "in",dpi=300)
 #produce a correlogram of death for each year
 
 #loop to create correlograms for each year
-Y_DBH<-unique(Mort_F[c("Year", "DBH10")])
+YU<-unique(Mort_F$Year)
 Beech_corr<-NULL
-for (i in 1:nrow(Y_DBH)){
-  Beech_sub<-subset(Mort_F,Year==Y_DBH$Year[i]&DBH10==Y_DBH$DBH10[i]&!is.na(Dead_cum2))
-  b.cor<-spline.correlog(Beech_sub$Easting, Beech_sub$Northing, Beech_sub$Dead_cum2)
-  b.cor2<-data.frame(Dist=b.cor$boot$boot.summary$predicted$x,Cor=b.cor$boot$boot.summary$predicted$y[6,],UCI=b.cor$boot$boot.summary$predicted$y[2,],LCI=b.cor$boot$boot.summary$predicted$y[10,],Year=Y_DBH$Year[i],Size=Y_DBH$DBH10[i])
+for (i in 1:length(YU)){
+  Beech_sub<-subset(Mort_F,Year==YU[i]&!is.na(Dead_cum2))
+  b.cor<-spline.correlog(Beech_sub$Easting, Beech_sub$Northing, Beech_sub$Dead_cum2,xmax = 50)
+  b.cor2<-data.frame(Dist=b.cor$boot$boot.summary$predicted$x[1,],Cor=b.cor$boot$boot.summary$predicted$y[6,],UCI=b.cor$boot$boot.summary$predicted$y[2,],LCI=b.cor$boot$boot.summary$predicted$y[10,],Year=Y_DBH$Year[i],Size=Y_DBH$DBH10[i])
   Beech_corr<-rbind(b.cor2,Beech_corr)
 }
 
 
-Beech_corr2<-melt(Beech_corr,id.vars =c("Cor","UCI","LCI","Year","Size"))
-
-head(Beech_corr2)
+head(Beech_corr)
 theme_set(theme_bw(base_size=12))
-Moran_plot1<-ggplot(Beech_corr2,aes(x=value,y=Cor,ymax=LCI,ymin=UCI))+geom_ribbon(alpha=0.5)+geom_line(size=1,colour="black")+facet_grid(Size~Year)
-Moran_plot2<-Moran_plot1+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))+ theme(legend.position="none")+xlim(0,50)+ylim(-0.5,1)
+Moran_plot1<-ggplot(Beech_corr,aes(x=Dist,y=Cor,ymax=LCI,ymin=UCI))+geom_ribbon(alpha=0.2)+geom_line(size=0.5,colour="black")+facet_wrap(~Year)
+Moran_plot2<-Moran_plot1+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))+ theme(legend.position="none")+xlim(0,50)
 Moran_plot2+geom_hline(y=0,lty=2)+xlab("Distance between trees (m)")+ylab("Moran's I correlation")+scale_size_continuous(range = c(1,3))
 ggsave("Figures/Dead_correl.png",height=6,width=8,units="in",dpi=300)
+
