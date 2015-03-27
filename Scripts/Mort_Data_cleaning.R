@@ -199,7 +199,7 @@ for (i in 1:length(SU)){
   Sub_sp<-subset(Dead_loc2,Species==SU[i])
   for (j in 2:length(Yr)){
     if (nrow(subset(Sub_sp,Year==Yr[j-1]&Dead_cum2==1))>0){
-    Yr1<-subset(Sub_sp,Year==Yr[j-1]&Dead_cum2==1)
+    Yr1<-subset(Sub_sp,Year==Yr[j-1]&Dead_cum2==1&DBH2>10)
     Yr2<-subset(Sub_sp,Year==Yr[j])
     Yr2$Dead_dist<-NA
     a <- SpatialPointsDataFrame(coords = data.frame(x = Yr2$Easting, y =Yr2$Northing ),data=data.frame(Yr2$BA))
@@ -231,5 +231,6 @@ for (i in 1:length(SU)){
 
 Years2$Dead_BA<-ifelse(is.na(Years2$Dead_BA),0,Years2$Dead_BA)
 summary(Years2)
+Years3<-unique(Years2)
 
-write.csv(Years2,"Data/Dead_size.csv",row.names=F)
+write.csv(Years3,"Data/Dead_size.csv",row.names=F)
