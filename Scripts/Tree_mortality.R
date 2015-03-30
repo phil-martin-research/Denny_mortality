@@ -30,6 +30,8 @@ DBH<-subset(DBH,In_out=="In")
 #first some exploratory analysis to look at variation in tree deaths by year
 #subset the data to only include data for the enclosed transect
 DBH<-subset(DBH,Block<51&Year>1960)
+DBH<-subset(DBH,DBH>=45)
+
 
 ggplot(DBH,aes(x=Easting,y=Northing,colour=as.factor(Status)))+geom_point(shape=1)+facet_wrap(~Year)
 
