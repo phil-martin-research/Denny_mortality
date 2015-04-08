@@ -66,7 +66,10 @@ plot(M1_F)
 
 Seed_F_Sel<-dredge(M1_F,rank="QAICc",chat=dfun(M1_F),subset=!(F_BA && FM)&dc(F_BA,I(F_BA^2))&dc(FM,I(FM^2)))
 Model_av_seed<-model.avg(Seed_F_Sel,subset = delta<7)
-summary(Model_av_seed)
+Coef_seedlings<-summary(Model_av_seed)$coefmat.full
 importance(Model_av_seed)
+
+write.csv(Seed_F_Sel,"Tables/Seedling_dens_sel.csv",row.names=F)
+write.csv(Coef_seedlings,"Tables/Seedling_dens_coefs.csv")
 
 
