@@ -37,3 +37,5 @@ Thin_slope$Thinning<-ifelse((Thin_slope$BA2-Thin_slope$BA1)<0,"Not thinning",Thi
 
 
 ddply(Thin_slope,.(Survey,Thinning),summarise,T_NT=length(Thinning))
+
+
