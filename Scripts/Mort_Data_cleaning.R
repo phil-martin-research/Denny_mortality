@@ -40,7 +40,7 @@ for (i in 1:nrow(DBH_ID)){
 Grid_sub<-subset(Tree_grid,ID2==DBH_ID$ID2[i])
 Grid_sub<-subset(Grid_sub,Year==DBH_ID$Year[i])
 Grid_sub$DBH<-DBH_ID$DBH[i]
-Grid_sub$BA<-(Grid_sub$DBH^2)*0.00007854
+Grid_sub$BA<-((Grid_sub$DBH)^2*(pi/4))/10000
 Grid_sub$Dead<-DBH_ID$Status[i]
 Grid_bind<-rbind(Grid_sub,Grid_bind)
 }
