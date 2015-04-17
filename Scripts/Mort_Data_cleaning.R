@@ -7,6 +7,7 @@ library(ggplot2)
 library(MuMIn)
 library(sp)
 library(spatstat)
+library(dplyr)
 
 #different measures of growth to include
 #1. GR- mm growth per year
@@ -21,9 +22,9 @@ DBH<-subset(DBH,In_out=="In")
 DBH<-subset(DBH,Year>1960)#for the moment remove data from 1959
 DBH<-subset(DBH,Block<51)
 
-IDs<-data.frame(ID1=as.character(unique(DBH$Tree_ID)))
+IDs<-distinct(DBH[c("Tree_ID","Block")])
+colnames(IDs)<-c("ID1","Block")
 IDs$ID2<-as.numeric(row.names(IDs))
-
 
 #now give the DBH dataframe a new ID for each tree
 DBH_ID<-NULL
@@ -44,13 +45,16 @@ Grid_sub$BA<-((Grid_sub$DBH)^2*(pi/4))/10000
 Grid_sub$Dead<-DBH_ID$Status[i]
 Grid_bind<-rbind(Grid_sub,Grid_bind)
 }
+
 head(Grid_bind)
-
-
-Tree_grid2<-merge(Tree_grid,Grid_bind,by=c("ID2","Year"),all=T)
-keeps<-c("ID2","Year","DBH.y","BA.y","Dead.y")
+Tree_grid1<-merge(Grid_bind,Tree_grid,by=c("ID2","Year"))
+head(Tree_grid1)
+head(IDs)
+Tree_grid2<-merge(Tree_grid1,IDs,by=c("ID2"),all=T)
+head(Tree_grid2)
+keeps<-c("Block","ID2","Year","DBH.x","BA.x","Dead.x")
 Tree_grid2<-Tree_grid2[keeps]
-colnames(Tree_grid2)<-c("ID2","Year","DBH","BA","Dead")
+colnames(Tree_grid2)<-c("Block","ID2","Year","DBH","BA","Dead")
 Tree_grid2$Dead<-ifelse(Tree_grid2$Dead==1,0,1)
 head(Tree_grid2)
 
@@ -60,11 +64,13 @@ head(Tree_grid2)
 #a previous time point classify it as dead,
 #otherwise classify it as alive
 Tree_IDs<-unique(Tree_grid2$ID2)
+
 Tree_dead<-NULL
 for (i in 1:length(Tree_IDs)){
   Tree_sub2<-subset(Tree_grid2,ID2==Tree_IDs[i])
   Tree_sub2$Dead2<-NA
   Tree_sub2$Dead2[1]<-Tree_sub2$Dead[1]
+  if (nrow(Tree_sub2)>1){
   for (y in 2:nrow(Tree_sub2)){
     if (is.na(Tree_sub2$Dead[y])&&is.na(Tree_sub2$Dead[y-1])==T){
       Tree_sub2$Dead2[y]<-NA#not present in dataset yet - not dead but not alive
@@ -81,7 +87,28 @@ for (i in 1:length(Tree_IDs)){
     Tree_sub2$Dead2[y]<-0
     }
   }
-  Tree_dead<-rbind(Tree_sub2,Tree_dead)
+} else{
+  if (Tree_sub2$Block<51){
+    if((Tree_sub2$Year)==1964){
+      Y<-1984
+    } else if ((Tree_sub2$Year)==1984){
+      Y<-1988
+    }else if ((Tree_sub2$Year)==1988){
+      Y<-1996
+    }else if ((Tree_sub2$Year)==1996){
+      Y<-2014
+    }
+    Tree_sub2<-rbind(Tree_sub2,data.frame(Block=Tree_sub2$Block[1],ID2=Tree_sub2$ID2[1],Year=Y,DBH=NA,BA=NA,Dead=1,Dead2=1))
+  }else{
+    if((Tree_sub2$Year)==1964){
+      Y<-1999
+    } else{
+      Y<-2014
+      }
+    Tree_sub2<-rbind(Tree_sub2,data.frame(Block=Tree_sub2$Block[1],ID2=Tree_sub2$ID2[1],Year=Y,DBH=NA,BA=NA,Dead=1,Dead2=1))  
+  }
+  }
+Tree_dead<-rbind(Tree_sub2,Tree_dead)
 }
 Tree_dead<-Tree_dead[with(Tree_dead, order(ID2,Year)), ]
 head(Tree_dead)
@@ -108,7 +135,7 @@ Tree_dead2<-rbind(Tree_sub,Tree_dead2)
 }
 
 Tree_dead2<-Tree_dead2[with(Tree_dead2, order(ID2,Year)), ]
-head(Tree_dead2,n = 20)
+head(Tree_dead,n = 20)
 
 #now calculate growth rates
 
