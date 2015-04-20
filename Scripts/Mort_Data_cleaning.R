@@ -20,7 +20,7 @@ DBH<-read.csv("Data/Denny_trees_cleaned.csv",colClasses=c("Tree_ID"="character")
 #subset trees to give only those inside plots
 DBH<-subset(DBH,In_out=="In")
 DBH<-subset(DBH,Year>1960)#for the moment remove data from 1959
-DBH<-subset(DBH,Block<51)
+
 
 IDs<-distinct(DBH[c("Tree_ID","Block")])
 colnames(IDs)<-c("ID1","Block")
@@ -47,11 +47,13 @@ Grid_bind<-rbind(Grid_sub,Grid_bind)
 }
 
 head(Grid_bind)
-Tree_grid1<-merge(Grid_bind,Tree_grid,by=c("ID2","Year"))
+Tree_grid1<-merge(Grid_bind,Tree_grid,by=c("ID2","Year"),all=T)
 head(Tree_grid1)
 head(IDs)
 Tree_grid2<-merge(Tree_grid1,IDs,by=c("ID2"),all=T)
 head(Tree_grid2)
+Tree_grid2<-subset(Tree_grid2,!(Block>51&Year==1984)&!(Block>51&Year==1988)&!(Block>51&Year==1996))
+Tree_grid2<-subset(Tree_grid2,!(Block<51&Year==1999))
 keeps<-c("Block","ID2","Year","DBH.x","BA.x","Dead.x")
 Tree_grid2<-Tree_grid2[keeps]
 colnames(Tree_grid2)<-c("Block","ID2","Year","DBH","BA","Dead")
@@ -64,7 +66,6 @@ head(Tree_grid2)
 #a previous time point classify it as dead,
 #otherwise classify it as alive
 Tree_IDs<-unique(Tree_grid2$ID2)
-
 Tree_dead<-NULL
 for (i in 1:length(Tree_IDs)){
   Tree_sub2<-subset(Tree_grid2,ID2==Tree_IDs[i])
@@ -87,7 +88,7 @@ for (i in 1:length(Tree_IDs)){
     Tree_sub2$Dead2[y]<-0
     }
   }
-} else{
+}else{
   if (Tree_sub2$Block<51){
     if((Tree_sub2$Year)==1964){
       Y<-1984
@@ -102,8 +103,10 @@ for (i in 1:length(Tree_IDs)){
   }else{
     if((Tree_sub2$Year)==1964){
       Y<-1999
-    } else{
+    } else if ((Tree_sub2$Year)==1999){
       Y<-2014
+      }else{
+      Y<-2020
       }
     Tree_sub2<-rbind(Tree_sub2,data.frame(Block=Tree_sub2$Block[1],ID2=Tree_sub2$ID2[1],Year=Y,DBH=NA,BA=NA,Dead=1,Dead2=1))  
   }
@@ -112,6 +115,8 @@ Tree_dead<-rbind(Tree_sub2,Tree_dead)
 }
 Tree_dead<-Tree_dead[with(Tree_dead, order(ID2,Year)), ]
 head(Tree_dead)
+Tree_dead<-subset(Tree_dead,Year<2020)
+tail(Tree_dead,n = 50)
 
 #now add a column to identify dead trees to work out
 #cumulative number of dead trees over time and space
@@ -138,7 +143,6 @@ Tree_dead2<-Tree_dead2[with(Tree_dead2, order(ID2,Year)), ]
 head(Tree_dead,n = 20)
 
 #now calculate growth rates
-
 Uni_Tree<-unique(Tree_dead2$ID2)
 head(Tree_dead2)
 Tree_dead2$GR<-NA
@@ -170,9 +174,10 @@ head(Tree_dead3,n = 20)
 
 Tree_dead4<-NULL
 Tree_dead3$SL<-NA
-Years<-data.frame(Year=unique(Tree_dead3$Year),SL=c(NA,20,4,12,18))
+Years<-rbind(data.frame(Year=unique(Tree_dead3$Year),SL=c(NA,20,4,12,18),Transect1=1,Transect2=51),
+             data.frame(Year=c(1964,1999,2014),SL=c(NA,35,15),Transect1=51,Transect2=90))    
 for (i in 1:nrow(Years)){
-  Dead_sub<-subset(Tree_dead3,Year==Years$Year[i])
+  Dead_sub<-subset(Tree_dead3,Year==Years$Year[i]&Block>=Years$Transect1[i]&Block<Years$Transect2[i])
   Dead_sub$SL<-Years$SL[i]
   for (j in 1:nrow(Dead_sub)){
     BA_sub<-subset(Dead_sub,BA2<Dead_sub$BA2[j])
@@ -183,8 +188,10 @@ for (i in 1:nrow(Years)){
   Tree_dead4<-rbind(Dead_sub,Tree_dead4)
 }
 
+
 Tree_dead4<-Tree_dead4[with(Tree_dead4, order(ID2,Year)), ]
 head(Tree_dead4,n = 20)
+tail(Tree_dead4,n = 20)
 
 write.csv(Tree_dead4,"Data/Dead.csv",row.names=F)
 
@@ -219,7 +226,8 @@ library(rgeos)
 #trees
 
 SU<-unique(Dead_loc2$Species)
-Yr<-unique(Dead_loc2$Year)
+Yr<-rbind(data.frame(Year=unique(Tree_dead3$Year),SL=c(NA,20,4,12,18),Transect1=1,Transect2=51),
+          data.frame(Year=c(1964,1999,2014),SL=c(NA,35,15),Transect1=51,Transect2=90))    
 Years<-NULL
 Years2<-NULL
 for (i in 1:length(SU)){
@@ -259,5 +267,7 @@ for (i in 1:length(SU)){
 Years2$Dead_BA<-ifelse(is.na(Years2$Dead_BA),0,Years2$Dead_BA)
 summary(Years2)
 Years3<-unique(Years2)
+head(Years3)
+
 
 write.csv(Years3,"Data/Dead_size.csv",row.names=F)
