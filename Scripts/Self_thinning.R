@@ -39,24 +39,14 @@ for (i in 2:length(YUN)){
 }
 
 Thin_slope
-head(Trees_subset)
-ddply(Trees_subset,.(Year),summarise,BA2=mean(BA),SDM2=mean(SDM))
+Thin_slope$BA_change2<-ifelse(Thin_slope$BA_change<0,"Subplots that lost BA","Subplots that gained BA")
 
-t.test(x = Thin_slope$Slope,mu = -0.75)
+#test whether the slope is significantly different to
+#-3/2 self thinning rule
+t.test(x = Thin_slope$Slope,mu = -0.75) #there is no significant difference
 mean(Thin_slope$Slope)
 std(Thin_slope$Slope)
 
-line_pred<-data.frame(SDM=33.77,BA=0.0709544,Year=1964)
-
-qplot(Thin_slope$BA_change,Thin_slope$Slope)+geom_hline(y=-0.75,lty=2)
-
-
-
-preds<-data.frame(SDM=seq(min(Trees_subset$SDM),max(Trees_subset$SDM),0.1))
-preds$BA<-preds$SDM*-1.031957
-preds$BA_UCI<-preds$SDM*-0.6778439
-preds$BA_LCI<-preds$SDM*-1.3860699
-preds$BA_3_2<-preds$SDM*-0.75
 
 #plot slopes- with arrows
 lb1 <-expression(paste("mean slope=-0.63" %+-% "0.26"))
@@ -67,4 +57,23 @@ ST_plot3<-ST_plot2+geom_line(data=preds,aes(x=SDM,y=BA,group=NULL))+ylab(express
 ST_plot3+annotate("text", x = 20, y = 0.9, label ="mean slope= -0.63 +/-0.26, not significantly \ndifferent from -0.75 (P=0.65)")
 ggsave("Figures/Thinning1.png",width = 8,height=6,units = "in",dpi=300)
 
+#show the wide range of thinning slopes
+theme_set(theme_bw(base_size=12))
+ggplot(Thin_slope,aes(x=Slope))+geom_histogram()
+ggplot(Thin_slope,aes(x=Slope))+geom_histogram()+facet_wrap(~BA_change2)
+
+#now look at the differences between subplots that 
+#1. Increased in BA and
+#2. Those that decreased in BA
+ddply(Thin_slope,.(BA_change2),summarise,Slope_mean=mean(Slope),SE_slope=std(Slope),)
+labs<-data.frame(labels=c("Mean slope=-0.148+/-0.319","mean slope=-1.78+/-0.354"),BA_change2=c("Subplots that lost BA","Subplots that gained BA"))
+keeps<-c("Block","BA_change2")
+Tree_subset2<-merge(Thin_slope[,(keeps)],Trees_subset,by="Block")
+Tree_subset2<-Tree_subset2[with(Tree_subset2, order(Year)), ]
+theme_set(theme_bw(base_size=12))
+ST_plot1<-ggplot(Tree_subset2,aes(y=BA,x=SDM,group=Block))+geom_path(colour="black",alpha=0.2,arrow = arrow(length = unit(0.5, "cm")))+scale_x_log10(limits=c(1, 100))+scale_y_log10()+facet_wrap(~BA_change2)
+ST_plot2<-ST_plot1+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))
+ST_plot3<-ST_plot2+ylab(expression(paste("Mean tree basal area (", m^bold("2"),")")))+xlab("Subplot stem density")
+ST_plot3+geom_text(data=labs,aes(x=20,y=0.9,label=labels,group=NULL))
+ggsave("Figures/Thinning2.png",width = 8,height=6,units = "in",dpi=300)
 
