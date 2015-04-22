@@ -26,7 +26,7 @@ ggplot(Saplings,aes(x=Easting,y=Northing,colour=IS))+geom_point(shape=15)+facet_
 ggplot(Saplings,aes(x=SDM,y=SDS,colour=as.factor(Year)))+geom_point(shape=15)+geom_smooth(method="glm",family="poisson")
 ggplot(Saplings,aes(x=IM,y=IS,colour=as.factor(Year)))+geom_point(shape=15)+geom_smooth(method="glm",family="poisson")
 ggplot(Saplings,aes(x=FM,y=FS,colour=as.factor(Year)))+geom_point(shape=15)+geom_smooth(method="glm",family="poisson")
-ggplot(Saplings,aes(x=FM,y=FS,colour=as.factor(Year)))+geom_point(shape=15)+geom_smooth(method="glm",family="poisson")
+ggplot(Saplings,aes(x=QM,y=QS,colour=as.factor(Year)))+geom_point(shape=15)+geom_smooth(method="glm",family="poisson")
 #then BD
 ggplot(Saplings,aes(x=BAM,y=SDS,colour=as.factor(Year)))+geom_point(shape=15)+geom_smooth(method="glm",family="poisson")
 ggplot(Saplings,aes(x=BAQM,y=FS,colour=as.factor(Year)))+geom_point(shape=15)+geom_smooth(method="glm",family="poisson")
@@ -60,7 +60,7 @@ MDens4<-glmer(FS~FM*Year+I(FM^2)+(Block|Year),family="poisson",data=Saplings)
 plot(MDens1)
 plot(Saplings$FM,exp(predict(MDens1,re.form=NA)))
 AICc(MTime0,MDens1,MDens2,MDens3,MDens4)
-r.squaredGLMM(MDens)
+r.squaredGLMM(MDens1)
 
 
 #now create plots of this
