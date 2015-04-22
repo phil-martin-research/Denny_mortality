@@ -44,16 +44,6 @@ Browsing<-Browsing[complete.cases(Browsing),]
 Seed_browsing<-merge(Browsing,Seed_melt3,by="Plot")
 str(Seed_browsing)
 
-#explore the relationships between seedling density and
-#browsing pressure/canopy openness
-ggpairs(Seed_browsing[2:10])
-
-#explore in more detail
-#canopy relationship with beech seedlings
-ggplot(Seed_browsing,aes(x=Canopy_open,y=Beech))+geom_point()+geom_smooth(method="glm",family="poisson")
-#canopy openness and holly
-ggplot(Seed_browsing,aes(x=Canopy_open,y=Holly))+geom_point()+geom_smooth(method="glm",family="poisson")
-
 
 #before analysis produce mean +/- SE for each species
 #and put in a table for later
@@ -61,3 +51,30 @@ Seedling_density<-data.frame(Species=c("Beech","Oak","Holly"),
            Mean_seedling_density=c(mean(Seed_browsing$Beech),mean(Seed_browsing$Oak),mean(Seed_browsing$Holly)),
            SE=c(std.error(Seed_browsing$Beech),std.error(Seed_browsing$Oak),std.error(Seed_browsing$Holly)))
 write.csv(Seedling_density,"Tables/Seedling_density.csv",row.names=F)
+
+#explore the relationships between seedling density and
+#browsing pressure/canopy openness
+ggpairs(Seed_browsing[2:10])
+
+#explore in more detail
+#canopy relationship with beech seedlings
+ggplot(Seed_browsing,aes(x=Canopy_open,y=Beech))+geom_point()+geom_smooth(method="glm",family="poisson")+xlim(0,40)
+#canopy openness and holly
+ggplot(Seed_browsing,aes(x=Canopy_open,y=Holly))+geom_point()+geom_smooth(method="glm",family="poisson")+xlim(0,40)
+#canopy openness and Oak
+ggplot(Seed_browsing,aes(x=Canopy_open,y=Oak))+geom_point()+geom_smooth(method="glm",family="poisson")+xlim(0,40)
+
+
+#Horse and Deer browsing pressure with beech seedlings
+ggplot(Seed_browsing,aes(x=Deer_dung,y=Beech))+geom_point()+geom_smooth(method="glm",family="poisson")
+ggplot(Seed_browsing,aes(x=Horse_dung,y=Beech))+geom_point()+geom_smooth(method="glm",family="poisson")
+ggplot(Seed_browsing,aes(x=Deer_dung+Horse_dung,y=Beech))+geom_point()+geom_smooth(method="glm",family="poisson")
+
+#there is little evidence that there is a relationship between browsing pressure in denny and the density of beech
+#seedlings - this could possibly be becuase browsing pressure is high everywhere (?!)
+
+#now test to see if there is a relationship between canopy openness and beech seedling density
+M0<-glm(Beech~1,data=Seed_browsing,family="poisson")
+M1<-glm(Beech~Canopy_open,data=Seed_browsing,family="poisson")
+par(mfrow=c(2,2))
+plot(M1)
