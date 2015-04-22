@@ -5,7 +5,7 @@
 #import data
 rm(list=ls(all=TRUE))
 Saplings<-read.csv("Data/Denny_plots.csv")
-Saplings<-subset(Saplings,Block<51)
+Saplings$Year<-ifelse(Saplings$Year==1999,1996,Saplings$Year)
 
 #load packages
 library(ggplot2)
@@ -56,16 +56,25 @@ AICc(MDens0,MDens0.1)
 MDens1<-glmer(FS~FM*Year+(Block|Year),family="poisson",data=Saplings)
 MDens2<-glmer(FS~FM+Year+(Block|Year),family="poisson",data=Saplings)
 MDens3<-glmer(FS~FM+(Block|Year),family="poisson",data=Saplings)
-MDens4<-glmer(FS~FM*Year+I(FM^2)+(Block|Year),family="poisson",data=Saplings)
-plot(MDens1)
-plot(Saplings$FM,exp(predict(MDens1,re.form=NA)))
-AICc(MTime0,MDens1,MDens2,MDens3,MDens4)
-r.squaredGLMM(MDens1)
+AICc(MDens1,MDens2,MDens3,MDens0)
+
+#produce a model list and selection table
+Mod_list<-list(MDens0,MDens1,MDens2,MDens3)
+Model_sel<-model.sel(Mod_list)
+Model_sel$R2<-c(r.squaredGLMM(MDens1)[1],r.squaredGLMM(MDens2)[1],r.squaredGLMM(MDens3)[1],r.squaredGLMM(MDens0)[1])
+write.csv(Model_sel,"Tables/Sapling_model_sel.csv",row.names=F)
+
+#also produce a coefficient table for sapling model
+Model_coefs<-coef(summary(MDens1))
+write.csv(Model_coefs,"Tables/Sapling_model_coefs.csv",row.names=F)
 
 
 #now create plots of this
-newdat<-rbind(expand.grid(FM=seq(1,max(Saplings$FM),1),Year=1964),
-                  expand.grid(FM=seq(0,15,1),Year=c(1984,1988,1996,2014)))
+newdat<-rbind(data.frame(FM=seq(1,max(Saplings$FM),1),Year=1964),
+              data.frame(FM=seq(0,18,1),Year=1984),
+              data.frame(FM=seq(0,17,1),Year=1988),
+              data.frame(FM=seq(0,17,1),Year=1996),
+              data.frame(FM=seq(0,15,1),Year=2014))
 newdat$FS<-0
 mm <- model.matrix(terms(MDens1),newdat)
 newdat$FS <- predict(MDens1,newdat,re.form=NA)
