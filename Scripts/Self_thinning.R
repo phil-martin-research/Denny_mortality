@@ -4,7 +4,6 @@
 rm(list=ls(all=TRUE))
 Trees<-read.csv("Data/Denny_trees_cleaned.csv")
 
-head(Trees)
 #load packages
 library(ggplot2)
 library(lme4)
@@ -15,65 +14,35 @@ library(reshape)
 library(grid)
 std <- function(x) sd(x)/sqrt(length(x))
 
+#set year as 1996 where it is 1999
+Trees$Year<-ifelse(Trees$Year==1999,1996,Trees$Year)
+Trees<-subset(Trees,Year==1964|Year==1996|Year==2014)
+Trees<-subset(Trees,Block!=25|Block!=26)
+
 #write a loop to show stem dynamics for each time period
-Trees_ddply<-ddply(Trees,.(Year,Block),summarise,BA=mean((DBH)^2*(pi/4))/10000,SDM=length(Tree_ID),BA_tot=sum((DBH)^2*(pi/4))/10000)
-Trees_subset<-subset(Trees_ddply,Year==1964|Year==2014)
-unique(Trees_subset$Year)
+Trees_ddply<-ddply(Trees,.(Year,Block),summarise,BA=sum(((DBH)^2*(pi/4))/10000),SDM=length(Tree_ID))
+Trees_ddply<-subset(Trees_ddply,Block!=26)
 
 
-nrow(Thin_slope)*0.04
-
-YUN<-unique(Trees_subset$Year)
-BUN<-unique(Trees_subset$Block)
-Thin_slope<-NULL
-for (i in 2:length(YUN)){
-  T1<-subset(Trees_subset,Year==YUN[i-1])
-  T2<-subset(Trees_subset,Year==YUN[i])
-  T_merge<-merge(T1,T2,by="Block")
-  T_merge$Slope<-((log(T_merge$BA.y)-log(T_merge$BA.x))/(log(T_merge$SDM.y)-log(T_merge$SDM.x)))
-  T_merge$BA_change<-(T_merge$BA_tot.y-T_merge$BA_tot.x)/T_merge$BA_tot.x
-  colnames(T_merge)<-c("Block","Year1","BA1","SD1","BA_tot1","Year2","BA2","SD2","BA_tot2","Slope","BA_change")
-  head(T_merge)
-  T_merge$Survey<-paste(YUN[i-1],"-",YUN[i],sep="")
-  Thin_slope<-rbind(T_merge,Thin_slope)
+Blocks<-unique(Trees_ddply$Block)
+Increase_BA<-NULL
+for (i in 1:length(Blocks)){
+  Trees_sub<-subset(Trees_ddply,Block==Blocks[i])
+  if (((Trees_sub$BA[2]-Trees_sub$BA[1])>0)&((Trees_sub$BA[3]-Trees_sub$BA[1])>0)){
+    Increase_BA<-rbind(Trees_sub,Increase_BA)
+  }else{
+  }
 }
 
-Thin_slope
-Thin_slope$BA_change2<-ifelse(Thin_slope$BA_change<0,"Subplots that lost BA","Subplots that gained BA")
-
-#test whether the slope is significantly different to
-#-3/2 self thinning rule
-t.test(x = Thin_slope$Slope,mu = -0.75) #there is no significant difference
-mean(Thin_slope$Slope)
-std(Thin_slope$Slope)
+ggplot(Increase_BA,aes(x=SDM,y=BA,shape=as.factor(Year),colour=as.factor(Year),group=Block))+geom_point()+geom_path(colour="black",alpha=0.3,lty=2)+scale_x_log10()+scale_y_log10()
 
 
-#plot slopes- with arrows
-lb1 <-expression(paste("mean slope=-0.63" %+-% "0.26"))
-theme_set(theme_bw(base_size=12))
-ST_plot1<-ggplot(Trees_subset,aes(y=BA,x=SDM,group=Block))+geom_path(colour="black",alpha=0.2,arrow = arrow(length = unit(0.5, "cm")))+scale_x_log10(limits=c(1, 100))+scale_y_log10()
-ST_plot2<-ST_plot1+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))
-ST_plot3<-ST_plot2+geom_line(data=preds,aes(x=SDM,y=BA,group=NULL))+ylab(expression(paste("Mean tree basal area (", m^bold("2"),")")))+xlab("Subplot stem density")
-ST_plot3+annotate("text", x = 20, y = 0.9, label ="mean slope= -0.63 +/-0.26, not significantly \ndifferent from -0.75 (P=0.65)")
-ggsave("Figures/Thinning1.png",width = 8,height=6,units = "in",dpi=300)
+#model the relationship between changes in SDM and those in BA
+#first put everything on a log scale
+Increase_BA$log_BA<-log(Increase_BA$BA)
+Increase_BA$log_SDM<-log(Increase_BA$SDM)
 
-#show the wide range of thinning slopes
-theme_set(theme_bw(base_size=12))
-ggplot(Thin_slope,aes(x=Slope))+geom_histogram()
-ggplot(Thin_slope,aes(x=Slope))+geom_histogram()+facet_wrap(~BA_change2)
 
-#now look at the differences between subplots that 
-#1. Increased in BA and
-#2. Those that decreased in BA
-ddply(Thin_slope,.(BA_change2),summarise,Slope_mean=mean(Slope),SE_slope=std(Slope),)
-labs<-data.frame(labels=c("Mean slope=-0.148+/-0.319","mean slope=-1.78+/-0.354"),BA_change2=c("Subplots that lost BA","Subplots that gained BA"))
-keeps<-c("Block","BA_change2")
-Tree_subset2<-merge(Thin_slope[,(keeps)],Trees_subset,by="Block")
-Tree_subset2<-Tree_subset2[with(Tree_subset2, order(Year)), ]
-theme_set(theme_bw(base_size=12))
-ST_plot1<-ggplot(Tree_subset2,aes(y=BA,x=SDM,group=Block))+geom_path(colour="black",alpha=0.2,arrow = arrow(length = unit(0.5, "cm")))+scale_x_log10(limits=c(1, 100))+scale_y_log10()+facet_wrap(~BA_change2)
-ST_plot2<-ST_plot1+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))
-ST_plot3<-ST_plot2+ylab(expression(paste("Mean tree basal area (", m^bold("2"),")")))+xlab("Subplot stem density")
-ST_plot3+geom_text(data=labs,aes(x=20,y=0.9,label=labels,group=NULL))
-ggsave("Figures/Thinning2.png",width = 8,height=6,units = "in",dpi=300)
-
+M1<-lmer(log_BA~log_SDM+(log_SDM|Block),data=Increase_BA)
+summary(M1)
+r.squaredGLMM(M1)
