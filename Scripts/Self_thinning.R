@@ -252,5 +252,9 @@ head(All_preds)
 
 #now plot this
 Thinning_plot1<-ggplot(All_increases,aes(x=exp(log_SDM),y=exp(log_BA),group=Block,colour=as.factor(Year)))+geom_point()+geom_path(colour="black",lty=2,alpha=0.2)+facet_wrap(~Species)
-Thinning_plot2<-Thinning_plot1+scale_x_log10()+scale_y_log10()
-Thinning_plot2+geom_line(data=All_preds,aes(x=exp(log_SDM),y=exp(log_BA),group=Species),colour="black")
+Thinning_plot2<-Thinning_plot1+scale_x_log10(limits = c(1,100),breaks=c(1,10,100))+scale_y_log10(limits = c(0.001,10),breaks=c(0.01,0.1,1,10))
+Thinning_plot3<-Thinning_plot2+geom_line(data=All_preds,aes(x=exp(log_SDM),y=exp(log_BA),group=Species),colour="black")
+Thinning_plot4<-Thinning_plot3+geom_ribbon(data=All_preds,aes(x=exp(log_SDM),y=exp(log_BA),ymin=exp(plo),ymax=exp(phi),group=Species),alpha=0.2,colour=NA)
+Thinning_plot5<-Thinning_plot4+scale_color_discrete("Year")+scale_shape_discrete("Year")+ylab(expression(paste("Total subplot basal area (",m^2,")",sep="")))+xlab("Subplot stem density")
+Thinning_plot5+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))
+ggsave("Figures/Self_thinning_all_species.png",height=6,width=8,dpi=1200)
