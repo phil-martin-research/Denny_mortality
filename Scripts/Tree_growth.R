@@ -112,9 +112,9 @@ for (y in 1:100){
   print(y)
   Tree2<-data.frame(DBH=5,Years=1,Tree=y)
 for (i in 1:400){
-  DBH_Inc<-rnorm(1,1.859e-01,sd=5.609e-02,1.859e-01+(2*5.609e-02))+
-    (runif(1,8.735e-03-(2*1.349e-03),8.735e-03+(2*1.349e-03))*Tree2$DBH[i])+
-    (runif(1,-7.422e-05-(2*1.351e-05),-7.422e-05+(2*1.351e-05))*Tree2$DBH[i]^2)
+  DBH_Inc<-abs(rnorm(1,1.859e-01,sd=5.609e-02*sqrt(476)))+
+    abs((rnorm(1,8.735e-03,sd=1.349e-03*sqrt(476))*Tree2$DBH[i]))-
+    abs(rnorm(1,-7.422e-05,sd=1.351e-05*sqrt(476))*Tree2$DBH[i]^2)
   DBH2<-Tree2$DBH[i]+DBH_Inc
   Tree3<-data.frame(DBH=DBH2,Years=i+1,Tree=y)
   Tree2<-rbind(Tree2,Tree3)
@@ -125,4 +125,4 @@ tail(Final_tree,n=100)
 
 
 
-ggplot(Final_tree,aes(x=Years,y=DBH,group=Tree))+geom_line(alpha=0.2)
+ggplot(Final_tree,aes(x=Years,y=DBH,group=Tree))+geom_line(alpha=0.1)
