@@ -64,8 +64,9 @@ plot(new.dat$DBH2,plogis(predict(M_DBH,newdata=new.dat,re.form=NA)),col="red")
 #candidates for spatial relationships with dead trees
 M0<-glmer(Dead~1+offset(log(SL))+(1|Block),Dead_F,family=binomial(link="cloglog"))        
 M_D_dist<-glmer(Dead~Dead_dist+offset(log(SL))+(1|Block),Dead_F,family=binomial(link="cloglog"))
+M_D_dist2<-glmer(Dead~Dead_dist+I(Dead_dist^2)+offset(log(SL))+(1|Block),Dead_F,family=binomial(link="cloglog"))
 M_D_no<-glmer(Dead~Dead_No+offset(log(SL))+(1|Block),Dead_F,family=binomial(link="cloglog"))
-AICc(M0,M_D_dist,M_D_no)
+AICc(M0,M_D_dist,M_D_dist2,M_D_no)
 
 #so distance to dead trees is best
 
@@ -89,7 +90,8 @@ models<-dredge(M1,trace = T,fixed="offset(log(SL))")
 
 #produce model selection table
 MS<-model.sel(models)
-MS
+
+#now produce le Cessie-van Houwelingen-Copas-Hosmer global goodness of fit test statistics
 M1<-glmer(Dead~Dead_dist+DBH2+GR+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
 M2<-glmer(Dead~DBH2+GR+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
 M3<-glmer(Dead~GR+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
@@ -98,50 +100,67 @@ M5<-glmer(Dead~DBH2+Dead_dist+offset(log(SL))+(1|Block),Dead_F_st2,family=binomi
 M6<-glmer(Dead~DBH2+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
 M7<-glmer(Dead~Dead_dist+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
 M8<-glmer(Dead~1+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
+
 Dead<-Dead_F_st$Dead
 DBH2<-Dead_F_st$DBH2
 GR<-Dead_F_st$GR
 Dead_dist<-Dead_F_st$Dead_dist
 
-formula(M1)
-
-model.matrix(M1)
-
 Model_list<-list(M1,M2,M3,M4,M5,M6,M7,M8)
 MS$GF_stat<-NA
 MS$GF_pval<-NA
 for (i in 1:8){
-  i<-1
-  MS$GF_stat[i]<-
-    HLgof.test(fit = fitted(Model_list[i], obs = Dead_F_st$Dead,X= model.matrix(Model_list[i])))$gof$statistic
-                
+  get(paste("M",i,sep=""))->Model
+  MS$GF_stat[i]<-HLgof.test(fit = fitted(Model), obs = Dead_F_st$Dead,X=model.matrix(Model))$gof$statistic
+  MS$GF_pval[i]<-HLgof.test(fit = fitted(Model), obs = Dead_F_st$Dead,X=model.matrix(Model))$gof$p.value            
 }
 
-MS$GF_stat<-c(HLgof.test(fit = fitted(M1), obs = Dead_F_st$Dead,X= model.matrix(Dead~DBH2+GR+Dead_dist))$gof$statistic,
-              
+#save model selection table
+write.csv(MS,"Tables/Beech_death_MS.csv",row.names=F)
 
+#now save model averaged selction
 Avs<-model.avg(MS,fit = T,subset =delta<=7)
-summary(Avs)
+write.csv(Avs$coefTable,"Tables/Beech_death_moav.csv")
 importance(Avs)
 
 #produce predictions from the model averaged coefficients
-
 #first for growth rate
-new.data.GR<-data.frame(GR=seq(min(Dead_F_st$GR),max(Dead_F_st$GR),length.out=500),SL=1,Dead_dist=mean(Dead_F_st$Dead_dist),DBH2=mean(Dead_F_st$DBH2))
+new.data.GR<-data.frame(GR=seq(min(Dead_F_st$GR),max(Dead_F_st$GR),length.out=500),SL=1,Dead_dist=mean(Dead_F_st$Dead_dist),DBH2=mean(Dead_F_st$DBH2),Type="Growth rate")
 new.data.GR$DBH2_sq<-new.data.GR$DBH2^2
-new.data.GR$Dead<-plogis(predict(Avs,newdata =new.data.GR,re.form=NA))
+new.data.GR$Dead<-predict(Avs,newdata =new.data.GR,re.form=NA,type = "response")
+new.data.GR$GR<-(new.data.GR$GR*sd(Dead_F$GR))+mean(Dead_F$GR)
+plot(new.data.GR$GR,new.data.GR$Dead)
+
 #next for DBH
-new.data.DBH<-data.frame(GR=mean(Dead_F_st$GR),SL=1,Dead_dist=mean(Dead_F_st$Dead_dist),DBH2=seq(min(Dead_F_st$DBH2),max(Dead_F_st$DBH2),length.out=500))
+new.data.DBH<-data.frame(GR=mean(Dead_F_st$GR),SL=1,Dead_dist=mean(Dead_F_st$Dead_dist),DBH2=seq(min(Dead_F_st$DBH2),max(Dead_F_st$DBH2),length.out=500),Type="DBH")
 new.data.DBH$DBH2_sq<-new.data.GR$DBH2^2
-new.data.DBH$Dead<-plogis(predict(Avs,newdata =new.data.DBH,re.form=NA))
+new.data.DBH$Dead<-predict(Avs,newdata =new.data.DBH,re.form=NA,type = "response")
+new.data.DBH$DBH2<-(new.data.DBH$DBH2*sd(Dead_F$DBH2))+mean(Dead_F$DBH2)
 plot(new.data.DBH$DBH2,new.data.DBH$Dead)
+
 #next for distance to dead tree
-new.data.Dead<-data.frame(GR=mean(Dead_F_st$GR),SL=1,Dead_dist=seq(min(Dead_F_st$Dead_dist),max(Dead_F_st$Dead_dist),length.out=500),DBH2=mean(Dead_F_st$DBH2))
+new.data.Dead<-data.frame(GR=mean(Dead_F_st$GR),SL=1,Dead_dist=seq(min(Dead_F_st$Dead_dist),max(Dead_F_st$Dead_dist),length.out=500),DBH2=mean(Dead_F_st$DBH2),Type="Distance to dead tree")
 new.data.Dead$DBH2_sq<-new.data.GR$DBH2^2
-new.data.Dead$Dead<-plogis(predict(Avs,newdata =new.data.Dead,re.form=NA))
+new.data.Dead$Dead<-predict(Avs,newdata =new.data.Dead,re.form=NA,type = "response")
+new.data.Dead$Dead_dist<-(new.data.Dead$Dead_dist*sd(Dead_F$Dead_dist))+mean(Dead_F$Dead_dist)
 plot(new.data.Dead$Dead_dist,new.data.Dead$Dead)
 
-#look at goodness of fit tests
 
-HLgof.test(fit = fitted(M1), obs = Dead_F_st$Dead,X= model.matrix(Dead~DBH2+GR+Dead_dist))$gof$statistic
-HLgof.test(fit = fitted(M1), obs = Dead_F_st$Dead,X= model.matrix(Dead~DBH2+GR+Dead_dist))$gof$p.value
+#now create a figure of this
+theme_set(theme_bw(base_size=12))
+#growth rate
+GR_P1<-ggplot(data=new.data.GR,aes(x=GR,y=Dead))+geom_line()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))+ theme(legend.position="none")                                                                                                                                            
+GR_P2<-GR_P1+xlab("Growth rate (mm per year)")+ylab("Annual probability of death")
+
+#DBH
+DBH_P1<-ggplot(data=new.data.DBH,aes(x=DBH2,y=Dead))+geom_line()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))+ theme(legend.position="none")                                                                                                                                            
+DBH_P2<-DBH_P1+xlab("Diameter at breast height (cm)")+ylab("Annual probability of death")
+
+#distance from dead tree
+Dead_P1<-ggplot(data=new.data.Dead,aes(x=Dead_dist,y=Dead))+geom_line()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))+ theme(legend.position="none")                                                                                                                                            
+Dead_P2<-Dead_P1+xlab("Distance to nearest dead tree (m)")+ylab("Annual probability of death")
+
+#put all figures together into one
+png("Figures/Tree_death.png",height=4,width=12,res=600,units="in")
+grid.arrange(GR_P2,DBH_P2,Dead_P2,ncol=3)
+dev.off()
