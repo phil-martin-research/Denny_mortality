@@ -10,6 +10,7 @@ library(lme4)
 library(lattice)
 library(MuMIn)
 library(plyr)
+library(MKmisc)
 
 #import data
 rm(list=ls(all=TRUE))
@@ -77,7 +78,7 @@ Dead_F_st2<-Dead_F_st[keeps]
 ggpairs(Dead_F_st2[,2:5]) #not much corrrelation between variables so should be safe to use them all
 
 #now a model of DBH, growth, distance to dead trees, number of live trees
-M1<-glmer(Dead~Dead_dist+DBH2+DBH2_sq+GR+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
+M1<-glmer(Dead~Dead_dist+DBH2+GR+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
 
 dotplot(ranef(M1,condVar=TRUE),
         lattice.options=list(layout=c(1,2)))
@@ -89,6 +90,35 @@ models<-dredge(M1,trace = T,fixed="offset(log(SL))")
 #produce model selection table
 MS<-model.sel(models)
 MS
+M1<-glmer(Dead~Dead_dist+DBH2+GR+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
+M2<-glmer(Dead~DBH2+GR+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
+M3<-glmer(Dead~GR+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
+M4<-glmer(Dead~GR+Dead_dist+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
+M5<-glmer(Dead~DBH2+Dead_dist+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
+M6<-glmer(Dead~DBH2+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
+M7<-glmer(Dead~Dead_dist+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
+M8<-glmer(Dead~1+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
+Dead<-Dead_F_st$Dead
+DBH2<-Dead_F_st$DBH2
+GR<-Dead_F_st$GR
+Dead_dist<-Dead_F_st$Dead_dist
+
+formula(M1)
+
+model.matrix(M1)
+
+Model_list<-list(M1,M2,M3,M4,M5,M6,M7,M8)
+MS$GF_stat<-NA
+MS$GF_pval<-NA
+for (i in 1:8){
+  i<-1
+  MS$GF_stat[i]<-
+    HLgof.test(fit = fitted(Model_list[i], obs = Dead_F_st$Dead,X= model.matrix(Model_list[i])))$gof$statistic
+                
+}
+
+MS$GF_stat<-c(HLgof.test(fit = fitted(M1), obs = Dead_F_st$Dead,X= model.matrix(Dead~DBH2+GR+Dead_dist))$gof$statistic,
+              
 
 Avs<-model.avg(MS,fit = T,subset =delta<=7)
 summary(Avs)
@@ -110,3 +140,8 @@ new.data.Dead<-data.frame(GR=mean(Dead_F_st$GR),SL=1,Dead_dist=seq(min(Dead_F_st
 new.data.Dead$DBH2_sq<-new.data.GR$DBH2^2
 new.data.Dead$Dead<-plogis(predict(Avs,newdata =new.data.Dead,re.form=NA))
 plot(new.data.Dead$Dead_dist,new.data.Dead$Dead)
+
+#look at goodness of fit tests
+
+HLgof.test(fit = fitted(M1), obs = Dead_F_st$Dead,X= model.matrix(Dead~DBH2+GR+Dead_dist))$gof$statistic
+HLgof.test(fit = fitted(M1), obs = Dead_F_st$Dead,X= model.matrix(Dead~DBH2+GR+Dead_dist))$gof$p.value
