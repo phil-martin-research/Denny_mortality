@@ -17,6 +17,7 @@ Trees<-read.csv("Data/Denny_trees_cleaned.csv")
 
 Trees$Year<-ifelse(Trees$Year==1999,1996,Trees$Year)
 
+
 Fate2<-NULL
 YU<-unique(Trees$Year)[-1]
 for (i in 2:length(YU)){
@@ -30,9 +31,12 @@ for (i in 2:length(YU)){
   Dead<-sum(Merged$Status.x,na.rm = T)-sum(Merged$Status.y,na.rm = T)
   Above10<-sum(Merged$Above10,na.rm = T)
   Below10<-(TotT1-(Dead+Above10))
+  TotT2<-TotT1-Dead
+  Mort<-1-(TotT2/TotT1)^(1/(YU[i]-YU[i-1]))
   Fate<-data.frame(Year_1=YU[i-1],Year_2=YU[i],No_T1=TotT1,Died=Dead,Prop_died=round(Dead/TotT1,2),
-                   Increased=Above10,Prop_inc=round(Above10/TotT1,2),No_increase=Below10, Prop_no_inc=round(Below10/TotT1,2))
+                   Increased=Above10,Prop_inc=round(Above10/TotT1,2),No_increase=Below10, Prop_no_inc=round(Below10/TotT1,2),
+                   Mort=Mort)
   Fate2<-rbind(Fate,Fate2)
 }
 
-write.csv(Fate2,"Figures/Sapling_fate.csv",row.names=F)
+write.csv(Fate2,"Tables/Sapling_fate.csv",row.names=F)
