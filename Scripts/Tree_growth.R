@@ -20,6 +20,9 @@ DBH<-read.csv("Data/Denny_trees_cleaned.csv",colClasses=c("Tree_ID"="character")
 DBH<-subset(DBH,In_out=="In") #subset trees to give only those inside plots
 DBH<-subset(DBH,Status==1)
 head(DBH)
+DBH$BA<-ifelse(DBH$DBH>10,(DBH$DBH^2*(pi/4))/400,0)
+
+DBH<-merge(DBH,ddply(DBH,.(Block,Year),summarise,BA2=sum(BA)),by=c("Block","Year"),all=F)
 
 IDs<-distinct(DBH[c("Tree_ID","Block")])
 colnames(IDs)<-c("ID1","Block")
@@ -76,22 +79,26 @@ d1 <- ranef(M0, condVar=TRUE)
 dotplot(d1)[["Block"]]
 
 #now look at fitted models
-M1<-lmer(DBH_Inc~DBH+(1|Block/ID2),data=Beech_growth)
-M2<-lmer(DBH_Inc~DBH+I(DBH^2)+(1|Block/ID2),data=Beech_growth)
-M3<-lmer(DBH_Inc~DBH+I(DBH^2)+I(DBH^3)+(1|Block/ID2),data=Beech_growth)
+M1<-lmer(DBH_Inc~DBH+(1|Block),data=Beech_growth)
+M2<-lmer(DBH_Inc~DBH+I(DBH^2)+(1|Block),data=Beech_growth)
+M3<-lmer(DBH_Inc~DBH+I(DBH^2)+I(DBH^3)+(1|Block),data=Beech_growth)
+M4<-lmer(DBH_Inc~DBH+I(DBH^2)+BA2+(1|Block),data=Beech_growth)
+M5<-lmer(DBH_Inc~DBH*BA2+(1|Block),data=Beech_growth)
+M6<-lmer(DBH_Inc~DBH*BA2+I(DBH^2)*BA2+(1|Block),data=Beech_growth)
+
 d1 <- ranef(M2, condVar=TRUE)
 
-summary(M2)
-AICc(M0,M1,M2,M3)
+summary(M4)
+AICc(M0,M1,M2,M3,M4,M5,M6)
 
 #now create plots of this
-newdat<-data.frame(DBH=seq(5,max(Beech_growth$DBH),length.out = 500))
+newdat<-data.frame(DBH=seq(5,max(Beech_growth$DBH),length.out = 500),BA2=mean(Beech_growth$BA2))
 newdat$DBH_Inc<-0
-mm <- model.matrix(terms(M2),newdat)
-newdat$DBH_Inc <- predict(M2,newdat,re.form=NA)
+mm <- model.matrix(terms(M4),newdat)
+newdat$DBH_Inc <- predict(M4,newdat,re.form=NA)
 ## or newdat$distance <- mm %*% fixef(fm1)
-pvar1 <- diag(mm %*% tcrossprod(vcov(M2),mm))
-tvar1 <- pvar1+VarCorr(M2)$Block[1]  ## must be adapted for more complex models
+pvar1 <- diag(mm %*% tcrossprod(vcov(M4),mm))
+tvar1 <- pvar1+VarCorr(M4)$Block[1]  ## must be adapted for more complex models
 newdat <- data.frame(
     newdat
     , plo = newdat$DBH_Inc-2*sqrt(pvar1)
@@ -102,27 +109,9 @@ newdat <- data.frame(
 
 theme_set(theme_bw(base_size=12))
 P1<-ggplot(newdat,aes(x=DBH,y=DBH_Inc,ymax=phi,ymin=plo))+geom_ribbon(alpha=0.2)+geom_ribbon(aes(ymax=thi,ymin=tlo),alpha=0.1)+geom_line(size=2)
-P1+geom_point(data=Beech_growth,aes(x=DBH,y=DBH_Inc,ymin=NULL,ymax=NULL),shape=1,alpha=0.1)+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))+ theme(legend.position="none")+ylim(-1,1.5)                                                                                                                                            
-
-summary(M2)
-
-
-Final_tree<-NULL
-for (y in 1:100){
-  print(y)
-  Tree2<-data.frame(DBH=5,Years=1,Tree=y)
-for (i in 1:400){
-  DBH_Inc<-abs(rnorm(1,1.859e-01,sd=5.609e-02*sqrt(476)))+
-    abs((rnorm(1,8.735e-03,sd=1.349e-03*sqrt(476))*Tree2$DBH[i]))-
-    abs(rnorm(1,-7.422e-05,sd=1.351e-05*sqrt(476))*Tree2$DBH[i]^2)
-  DBH2<-Tree2$DBH[i]+DBH_Inc
-  Tree3<-data.frame(DBH=DBH2,Years=i+1,Tree=y)
-  Tree2<-rbind(Tree2,Tree3)
-}
-Final_tree<-rbind(Tree2,Final_tree)
-}
-tail(Final_tree,n=100)
-
+P2<-P1+geom_point(data=Beech_growth,aes(x=DBH,y=DBH_Inc,ymin=NULL,ymax=NULL),shape=1,alpha=0.1)+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))+ theme(legend.position="none")+ylim(-1,1.5)                                                                                                                                            
+P2+xlab("Diameter at breast height (cm)")+ylab("Annual DBH increment (cm)")
+ggsave("Figures/Growth_rate.png",dpi=1200,height=4,width=6,units="in")
 
 
 ggplot(Final_tree,aes(x=Years,y=DBH,group=Tree))+geom_line(alpha=0.1)
