@@ -134,31 +134,66 @@ importance(Avs)
 
 #produce predictions from the model averaged coefficients
 #first for growth rate
-new.data.GR<-data.frame(GR=seq(min(Dead_F_st$GR),max(Dead_F_st$GR),length.out=500),SL=1,Dead_dist=mean(Dead_F_st$Dead_dist),DBH2=mean(Dead_F_st$DBH2),Sand=mean(Dead_F_st$Sand),Type="Growth rate")
-new.data.GR$DBH2_sq<-new.data.GR$DBH2^2
-new.data.GR$Dead<-predict(Avs,newdata=new.data.GR,re.form=NA,type = "response")
+new.data.GR<-data.frame(Dead=0,GR=seq(min(Dead_F_st2$GR),max(Dead_F_st2$GR),length.out=500),SL=1,Dead_dist=mean(Dead_F_st2$Dead_dist),DBH2=mean(Dead_F_st2$DBH2),Sand=mean(Dead_F_st2$Sand),Type="Growth rate")
+mm <- model.matrix(terms(M3),new.data.GR)
+new.data.GR$Dead<-predict(Avs,newdata=new.data.GR,re.form=NA)
+pvar1 <- diag(mm %*% tcrossprod(vcov(M3),mm))
+tvar1 <- pvar1+VarCorr(M3)$Block[1]  
+new.data.GR<- data.frame(
+  new.data.GR
+  , plo = new.data.GR$Dead-2*sqrt(pvar1)
+  , phi = new.data.GR$Dead+2*sqrt(pvar1)
+  , tlo = new.data.GR$Dead-2*sqrt(tvar1)
+  , thi = new.data.GR$Dead+2*sqrt(tvar1)
+)
+
 new.data.GR$GR<-(new.data.GR$GR*sd(Dead_F$GR))+mean(Dead_F$GR)
-plot(new.data.GR$GR,new.data.GR$Dead)
+
+
 
 #next for DBH
-new.data.DBH<-data.frame(GR=mean(Dead_F_st$GR),SL=1,Dead_dist=mean(Dead_F_st$Dead_dist),DBH2=seq(min(Dead_F_st$DBH2),max(Dead_F_st$DBH2),length.out=500),Sand=mean(Dead_F_st$Sand),Type="DBH")
-new.data.DBH$DBH2_sq<-new.data.DBH$DBH2^2
-new.data.DBH$Dead<-predict(Avs,newdata =new.data.DBH,re.form=NA,type = "response")
+new.data.DBH<-data.frame(Dead=0,GR=mean(Dead_F_st2$GR),SL=1,Dead_dist=mean(Dead_F_st2$Dead_dist),DBH2=seq(min(Dead_F_st2$DBH2),max(Dead_F_st2$DBH2),length.out=500),Sand=mean(Dead_F_st2$Sand),Type="DBH")
+mm <- model.matrix(terms(M3),new.data.DBH)
+new.data.DBH$Dead<-predict(Avs,newdata=new.data.DBH,re.form=NA)
+pvar1 <- diag(mm %*% tcrossprod(vcov(M3),mm))
+tvar1 <- pvar1+VarCorr(M3)$Block[1]  
+new.data.DBH<- data.frame(
+  new.data.DBH
+  , plo = new.data.DBH$Dead-2*sqrt(pvar1)
+  , phi = new.data.DBH$Dead+2*sqrt(pvar1)
+  , tlo = new.data.DBH$Dead-2*sqrt(tvar1)
+  , thi = new.data.DBH$Dead+2*sqrt(tvar1)
+)
 new.data.DBH$DBH2<-(new.data.DBH$DBH2*sd(Dead_F$DBH2))+mean(Dead_F$DBH2)
-plot(new.data.DBH$DBH2,new.data.DBH$Dead)
 
 #next for distance to dead tree
-new.data.Dead<-data.frame(GR=mean(Dead_F_st$GR),SL=1,Dead_dist=seq(min(Dead_F_st$Dead_dist),max(Dead_F_st$Dead_dist),length.out=500),DBH2=mean(Dead_F_st$DBH2),Sand=mean(Dead_F_st$Sand),Type="Distance to dead tree")
-new.data.Dead$DBH2_sq<-new.data.Dead$DBH2^2
-new.data.Dead$Dead<-predict(Avs,newdata =new.data.Dead,re.form=NA,type = "response")
+new.data.Dead<-data.frame(Dead=0,GR=mean(Dead_F_st$GR),SL=1,Dead_dist=seq(min(Dead_F_st$Dead_dist),max(Dead_F_st$Dead_dist),length.out=500),DBH2=mean(Dead_F_st$DBH2),Sand=mean(Dead_F_st$Sand),Type="Distance to dead tree")
+mm <- model.matrix(terms(M3),new.data.Dead)
+new.data.Dead$Dead<-predict(Avs,newdata=new.data.Dead,re.form=NA)
+pvar1 <- diag(mm %*% tcrossprod(vcov(M3),mm))
+tvar1 <- pvar1+VarCorr(M3)$Block[1]  
+new.data.Dead<- data.frame(
+  new.data.Dead
+  , plo = new.data.Dead$Dead-2*sqrt(pvar1)
+  , phi = new.data.Dead$Dead+2*sqrt(pvar1)
+  , tlo = new.data.Dead$Dead-2*sqrt(tvar1)
+  , thi = new.data.Dead$Dead+2*sqrt(tvar1)
+)
 new.data.Dead$Dead_dist<-(new.data.Dead$Dead_dist*sd(Dead_F$Dead_dist))+mean(Dead_F$Dead_dist)
-plot(new.data.Dead$Dead_dist,new.data.Dead$Dead)
 
-hist(Dead_F_st$Sand)
-
-#next for distance to dead tree
+#next for soil type
 new.data.Sand<-data.frame(GR=mean(Dead_F_st$GR),SL=1,Dead_dist=mean(Dead_F_st$Dead_dist),DBH2=mean(Dead_F_st$DBH2),Sand=seq(min(Dead_F_st$Sand),max(Dead_F_st$Sand),length.out=500),Type="Sand content")
-new.data.Sand$DBH2_sq<-new.data.Sand$DBH2^2
+mm <- model.matrix(terms(M3),new.data.Dead)
+new.data.Sand$Dead<-predict(Avs,newdata=new.data.Dead,re.form=NA)
+pvar1 <- diag(mm %*% tcrossprod(vcov(M3),mm))
+tvar1 <- pvar1+VarCorr(M3)$Block[1]  
+new.data.Sand<- data.frame(
+  new.data.Sand
+  , plo = new.data.Sand$Dead-2*sqrt(pvar1)
+  , phi = new.data.Sand$Dead+2*sqrt(pvar1)
+  , tlo = new.data.Sand$Dead-2*sqrt(tvar1)
+  , thi = new.data.Sand$Dead+2*sqrt(tvar1)
+)
 new.data.Sand$Dead<-predict(Avs,newdata =new.data.Sand,re.form=NA,type = "response")
 new.data.Sand$Sand<-(new.data.Sand$Sand*sd(Dead_F$Sand))+mean(Dead_F$Sand)
 plot(new.data.Sand$Sand,new.data.Dead$Dead)
@@ -167,23 +202,26 @@ plot(new.data.Sand$Sand,new.data.Dead$Dead)
 #now create a figure of this
 theme_set(theme_bw(base_size=12))
 #growth rate
-GR_P1<-ggplot(data=new.data.GR,aes(x=GR,y=Dead))+geom_line()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))+ theme(legend.position="none")                                                                                                                                            
-GR_P2<-GR_P1+xlab("Growth rate (mm per year)")+ylab("Annual probability of death")+ annotate("text", x = -19, y = 0.4, label = "(a)")
+GR_P1<-ggplot(data=new.data.GR,aes(x=GR,y=1-exp(-exp(Dead))))+geom_line()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))+ theme(legend.position="none")                                                                                                                                            
+GR_P2<-GR_P1+xlab("Growth rate (mm per year)")+ylab("Annual probability of death")+ annotate("text", x = -19, y = 1, label = "(a)")
+GR_P3<-GR_P2+geom_ribbon(data=new.data.GR,aes(x=GR,ymax=1-exp(-exp(thi)),ymin=1-exp(-exp(tlo))),alpha=0.2)
 
 #DBH
-DBH_P1<-ggplot(data=new.data.DBH,aes(x=DBH2,y=Dead))+geom_line()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))+ theme(legend.position="none")                                                                                                                                            
-DBH_P2<-DBH_P1+xlab("Diameter at breast height (cm)")+ylab("Annual probability of death")+ annotate("text", x = 0, y = 0.015, label = "(b)")
+DBH_P1<-ggplot(data=new.data.DBH,aes(x=DBH2,y=1-exp(-exp(Dead))))+geom_line()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))+ theme(legend.position="none")                                                                                                                                            
+DBH_P2<-DBH_P1+xlab("Diameter at breast height (cm)")+ylab("Annual probability of death")+ annotate("text", x = 0, y = 0.15, label = "(b)")
+DBH_P3<-DBH_P2+geom_ribbon(data=new.data.DBH,aes(x=DBH2,ymax=1-exp(-exp(thi)),ymin=1-exp(-exp(tlo))),alpha=0.2)
 
 #distance from dead tree
-Dead_P1<-ggplot(data=new.data.Dead,aes(x=Dead_dist,y=Dead))+geom_line()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))+ theme(legend.position="none")                                                                                                                                            
-Dead_P2<-Dead_P1+xlab("Distance to nearest dead tree (m)")+ylab("Annual probability of death")+ annotate("text", x = 0, y = 0.007, label = "(c)")
+Dead_P1<-ggplot(data=new.data.Dead,aes(x=Dead_dist,y=1-exp(-exp(Dead))))+geom_line()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))+ theme(legend.position="none")                                                                                                                                            
+Dead_P2<-Dead_P1+xlab("Distance to nearest dead tree (m)")+ylab("Annual probability of death")+ annotate("text", x = 0, y = 0.08, label = "(c)")
+Dead_P3<-Dead_P2+geom_ribbon(data=new.data.Dead,aes(x=Dead_dist,ymax=1-exp(-exp(thi)),ymin=1-exp(-exp(tlo))),alpha=0.2)
 
 #sand content
-Sand_P1<-ggplot(data=new.data.Sand,aes(x=Sand,y=Dead))+geom_line()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))+ theme(legend.position="none")                                                                                                                                            
-Sand_P2<-Dead_P1+xlab("Sand content or soil (%)")+ylab("Annual probability of death")+ annotate("text", x = 0, y = 0.007, label = "(d)")
-
+Sand_P1<-ggplot(data=new.data.Sand,aes(x=Sand,y=1-exp(-exp(Dead))))+geom_line()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))+ theme(legend.position="none")                                                                                                                                            
+Sand_P2<-Sand_P1+xlab("Sand content or soil (%)")+ylab("Annual probability of death")+ annotate("text", x = 28, y = 0.06, label = "(d)")
+Sand_P3<-Sand_P2+geom_ribbon(data=new.data.Sand,aes(x=Sand,ymax=1-exp(-exp(thi)),ymin=1-exp(-exp(tlo))),alpha=0.2)
 
 #put all figures together into one
 png("Figures/Tree_death.png",height=8,width=12,res=600,units="in")
-grid.arrange(GR_P2,DBH_P2,Dead_P2,Sand_P2,ncol=2)
+grid.arrange(GR_P3,DBH_P3,Dead_P3,Sand_P3,ncol=2)
 dev.off()
