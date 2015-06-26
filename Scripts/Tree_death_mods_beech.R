@@ -222,6 +222,6 @@ Sand_P2<-Sand_P1+xlab("Sand content or soil (%)")+ylab("Annual probability of de
 Sand_P3<-Sand_P2+geom_ribbon(data=new.data.Sand,aes(x=Sand,ymax=1-exp(-exp(thi)),ymin=1-exp(-exp(tlo))),alpha=0.2)
 
 #put all figures together into one
-png("Figures/Tree_death.png",height=8,width=12,res=600,units="in")
+png("Figures/Tree_death.png",height=6,width=10,res=300,units="in")
 grid.arrange(GR_P3,DBH_P3,Dead_P3,Sand_P3,ncol=2)
 dev.off()
