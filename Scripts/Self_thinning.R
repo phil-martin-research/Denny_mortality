@@ -40,6 +40,7 @@ M_list<-list(M1,M3_2)
 M_sel<-model.sel(M_list)
 M_sel$r_sq<-c(r.squaredGLMM(M1)[1],r.squaredGLMM(M3_2)[1])
 
+summary(M1)
 
 summary(Trees_ddply)
 

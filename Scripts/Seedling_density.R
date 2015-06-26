@@ -3,6 +3,11 @@
 
 #author: Phil Martin
 #last edited: 22/04/15
+library(installr)
+
+setwd("C:/Temp/") 
+packages <- installed.packages()[,"Package"] 
+save(packages, file="Rpackages") 
 
 #load packages
 library(ggplot2)

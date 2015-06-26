@@ -13,50 +13,23 @@ library(lme4)
 library(MuMIn)
 library(plyr)
 
-#explore data
 head(Saplings)
-ggplot(Saplings,aes(x=Easting,y=Northing,colour=SDS))+geom_point(shape=15)+facet_wrap(~Year)+scale_colour_gradient(low ="grey",high="red")
-ggplot(Saplings,aes(x=Easting,y=Northing,colour=FS))+geom_point(shape=15)+facet_wrap(~Year)+scale_colour_gradient(low ="grey",high="red")
-ggplot(Saplings,aes(x=Easting,y=Northing,colour=QS))+geom_point(shape=15)+facet_wrap(~Year)+scale_colour_gradient(low ="grey",high="red")
-ggplot(Saplings,aes(x=Easting,y=Northing,colour=IS))+geom_point(shape=15)+facet_wrap(~Year)+scale_colour_gradient(low ="grey",high="red")
+keeps<-c("Block","FS","Year","FM")
+Saplings<-Saplings[keeps]
+Saplings_st<-cbind(Saplings[,1:2],apply(X=Saplings[,3:ncol(Saplings)],MARGIN=2,FUN=function(x) {(x-mean(x))/sd(x)}))
 
-
-#plot against possible predictors, SD of mature trees, BA of mature trees
-#first SD
-ggplot(Saplings,aes(x=SDM,y=SDS,colour=as.factor(Year)))+geom_point(shape=15)+geom_smooth(method="glm",family="poisson")
-ggplot(Saplings,aes(x=IM,y=IS,colour=as.factor(Year)))+geom_point(shape=15)+geom_smooth(method="glm",family="poisson")
-ggplot(Saplings,aes(x=FM,y=FS,colour=as.factor(Year)))+geom_point(shape=15)+geom_smooth(method="glm",family="poisson")
-ggplot(Saplings,aes(x=QM,y=QS,colour=as.factor(Year)))+geom_point(shape=15)+geom_smooth(method="glm",family="poisson")
-#then BD
-ggplot(Saplings,aes(x=BAM,y=SDS,colour=as.factor(Year)))+geom_point(shape=15)+geom_smooth(method="glm",family="poisson")
-ggplot(Saplings,aes(x=BAQM,y=FS,colour=as.factor(Year)))+geom_point(shape=15)+geom_smooth(method="glm",family="poisson")
-ggplot(Saplings,aes(x=BAFM,y=FS,colour=as.factor(Year)))+geom_point(shape=15)+geom_smooth(method="glm",family="poisson")
-
-#look at change over time of saplings
-ggplot(Saplings,aes(x=Year,y=SDS,group=as.factor(Block)))+geom_point(shape=15)+geom_line()+geom_smooth(method="glm",family="poisson",aes(group=NULL),se=F,size=3)
-ggplot(Saplings,aes(x=Year,y=IS,group=as.factor(Block)))+geom_point(shape=15)+geom_line()+geom_smooth(method="glm",family="poisson",aes(group=NULL),se=F,size=3)
-ggplot(Saplings,aes(x=Year,y=QS,group=as.factor(Block)))+geom_point(shape=15)+geom_line()+geom_smooth(method="glm",family="poisson",aes(group=NULL),se=F,size=3)
-ggplot(Saplings,aes(x=Year,y=FS,group=as.factor(Block)))+geom_point(shape=15)+geom_line()+geom_smooth(method="glm",family="poisson",aes(group=NULL),se=F,size=3)
-
-#model of sapling density for beech over time
-Saplings$Year2<-Saplings$Year-1964
-#null model
-MTime0<-glmer(FS~1+(1|Block),family="poisson",data=Saplings)
-#now by time
-MTime1<-glmer(FS~Year2+(Block|Year2),family="poisson",data=Saplings)
-plot(MTime1)
-AICc(MTime0,MTime1)
-r.squaredGLMM(MTime1)
 
 #now model sapling density for beech as a function of adult tree density
-MDens0<-glmer(FS~1+(Block|Year),family="poisson",data=Saplings)
-MDens0.1<-glmer(FS~1+(1|Block),family="poisson",data=Saplings)
+MDens0<-glmer(FS~1+(Block|Year),family="poisson",data=Saplings_st)
+MDens0.1<-glmer(FS~1+(1|Block),family="poisson",data=Saplings_st)
 AICc(MDens0,MDens0.1)
 #now by time
-MDens1<-glmer(FS~FM*Year+(Block|Year),family="poisson",data=Saplings)
-MDens2<-glmer(FS~FM+Year+(Block|Year),family="poisson",data=Saplings)
-MDens3<-glmer(FS~FM+(Block|Year),family="poisson",data=Saplings)
+MDens1<-glmer(FS~FM*Year+(1|Block),family="poisson",data=Saplings_st)
+MDens2<-glmer(FS~FM+Year+(1|Block),family="poisson",data=Saplings_st)
+MDens3<-glmer(FS~FM+(1|Block),family="poisson",data=Saplings_st)
 AICc(MDens1,MDens2,MDens3,MDens0)
+
+summary(MDens1)
 
 #produce a model list and selection table
 Mod_list<-list(MDens0,MDens1,MDens2,MDens3)
@@ -67,6 +40,11 @@ write.csv(Model_sel,"Tables/Sapling_model_sel.csv",row.names=F)
 #also produce a coefficient table for sapling model
 Model_coefs<-coef(summary(MDens1))
 write.csv(Model_coefs,"Tables/Sapling_model_coefs.csv",row.names=F)
+
+-0.77+(1.03*4)-(0.74*-1)+(0.24*(-1*4))
+
+
+qplot(Saplings_st$FM,predict(MDens1),colour=as.factor(Saplings_st$Year))
 
 
 #now create plots of this
