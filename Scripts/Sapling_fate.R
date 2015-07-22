@@ -21,8 +21,8 @@ Trees$Year<-ifelse(Trees$Year==1999,1996,Trees$Year)
 Fate2<-NULL
 YU<-unique(Trees$Year)[-1]
 for (i in 2:length(YU)){
-  T1<-subset(Trees,Year==YU[i-1]&DBH<10&Status==1&Species=="Q")
-  T2<-subset(Trees,Year==YU[i]&Species=="Q")
+  T1<-subset(Trees,Year==YU[i-1]&DBH<10&Status==1&Species=="F")
+  T2<-subset(Trees,Year==YU[i]&Species=="F")
   Merged<-merge(T1,T2,by="Tree_ID",all.x=T)  
   Merged$Status.y<-ifelse(is.na(Merged$Status.y),0,Merged$Status.y)
   Merged$Above10<-ifelse(Merged$DBH.y>10,1,0)
@@ -39,4 +39,4 @@ for (i in 2:length(YU)){
   Fate2<-rbind(Fate,Fate2)
 }
 
-write.csv(Fate2,"Tables/Sapling_fate_Oak.csv",row.names=F)
+write.csv(Fate2,"Tables/Sapling_fate_Beech.csv",row.names=F)
