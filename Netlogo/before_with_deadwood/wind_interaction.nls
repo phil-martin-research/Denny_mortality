@@ -1,0 +1,198 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; BEFORE - Beech model
+;; based on: Neuert, C. 1999, Rademacher, C. 2004
+;; author: Jan C. Thiele
+;; contact: jthiele@gwdg.de
+;; date: 04 july 2015
+;;
+;; file: wind_interaction.nls
+;; description: function to calculate the neighborhood interaction due to wind
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; initialize_winddirectionprob <observer> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; description: adjust wind rose due to main wind direction 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to initialize_winddirectionprob
+  ; get index of main wind direction from the wind list
+  let index position mwd winddir
+   
+  let i 0
+  ; run from main wind direction to end of list
+  repeat (8 - index)
+  [
+    set pwind replace-item (index + i) pwind (item i  pwindlist)
+    set i i + 1
+  ]
+  set i 0
+  ; run from begining of list to main wind direction
+  repeat (index)
+  [ 
+    set pwind replace-item (i) pwind (item (8 - index + i) pwindlist)
+    set i i + 1  
+  ]
+  let psum 0
+  set i 0  
+  ; calculate cummulative probability of wind directions
+  repeat (length pwind)
+  [
+    set psum (psum + item (i) pwind)
+    set pwind replace-item (i) pwind psum
+    set i i + 1
+  ]  
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; get_winddirection <observer> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to get_winddirection
+     ; get random number for wind direction probability
+     let rand random-float 1.0 
+     
+     let i 7
+     ;; reset wd (relative shift in x- and y-coordinate [dx ,dy])
+     set wd []
+     ;; reset windhere
+     set windhere ""
+     ;; find current wind direction
+     ;; if wind from north
+     ifelse (rand < (item 0 pwind))
+     [
+       set windhere (item 0 winddir)
+       set wd item 0 wd_xy
+     ]
+     [
+       while [windhere = ""]
+       [
+         if (rand > (item (i - 1) pwind))
+         [
+           set windhere (item i winddir)
+           set wd (item i wd_xy)
+         ]
+         set i i - 1
+         if (i < 0)
+         [ show "error in wind" stop ]
+       ]
+     ]
+     
+     ; get wind power/type (normal, hard, heavy)
+     set rand random-float 1.0
+
+     ; reset windstrength
+     set windstrength 0.0
+     set i 2
+     while [windstrength = 0.0]
+     [
+       if (rand >= (item 0 (item i pwindstrength)))
+       [
+         set windstrength (item 1 (item i pwindstrength))
+       ]
+       set i i - 1
+     ]
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; windbreakprobability <patch> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to windbreakprobability
+  let ptilttemp windstrength
+  ;; do with wind sided cell
+  ask patches at-points wd 
+  [
+    let gaps 8 - sum [crownarea] of beechesIV-here
+    if (gaps > 0)
+    [
+      ;; increase prob. of tilt for every gap in neighbour
+      set ptilttemp ptilttemp + windstrength * epkipp * gaps                              
+    ]
+  ]
+  ;; if there are gaps in layer IV in wind sided cell, then gaps in downwind sided cell will increase wind break probability:
+  if (ptilttemp > windstrength)
+  [                          
+    ;; change algebraic sign of xcor and ycor of wind direction to get downwind sided cell
+    let rwd1 replace-item 0 wd list (item 0 item 0 wd * -1) (item 1 item 0 wd * -1)
+    ;; do with downwind sided cell
+    ask patches at-points rwd1 
+    [                                             
+      let gaps 8 - sum [crownarea] of beechesIV-here
+      if (gaps > 0)
+      [ set ptilttemp ptilttemp + windstrength * epkipp * gaps ]           
+    ]    
+  ]   
+  
+  ;; probabilty should be lower than 100 % 
+  if (ptilttemp > 1.0)
+  [ set ptilttemp 1.0 ]   
+  
+  set ptilt ptilttemp
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; wind_interaction <patch> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to wind_interaction
+  ask beechesIV-here 
+  [
+    if (random-float 1 < ptilt)
+    [  
+      ;; if a beechIV will fall, it could damage beechIV and beechIII in three neighbouring cells in wind direction
+      let rwd1 replace-item 0 wd list (item 0 item 0 wd * -1) (item 1 item 0 wd * -1)
+      let rwd2 replace-item 0 rwd1 list (item 0 item 0 rwd1 * 2) (item 1 item 0 rwd1 * 2) 
+      let rwd3 replace-item 0 rwd1 list (item 0 item 0 rwd1 * 3) (item 1 item 0 rwd1 * 3)
+      foreach (list rwd1 rwd2 rwd3) 
+      [
+        ask patches at-points ? 
+        [ 
+          beechIV_damage 
+          beechIII_damage
+        ]
+      ]
+      create_IV_deadwood_windfall
+      die
+    ]
+  ]
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; beechIV_damage <patch> ;:::;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to beechIV_damage
+  ask beechesIV-here 
+  [
+    if (random-float 1.0 <= windDamageIV)
+    [ 
+      let crownarea_old crownarea
+      set crownarea crownarea - random (crownarea + 1)
+      if (crownarea < 1)
+      [ 
+        set crownarea crownarea_old
+        create_IV_deadwood_windbreak
+        die 
+      ]
+    ]
+  ]
+end
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; beechIII_damage <patch> ;::;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to beechIII_damage
+  ask beechesIII-here 
+  [
+    if (random-float 1.0 <= windDamageIII)
+    [ 
+      create_III_deadwood_windbreak
+      die 
+    ]
+  ]
+end

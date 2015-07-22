@@ -1,0 +1,320 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; BEFORE - Beech model
+;; based on: Neuert, C. 1999, Rademacher, C. 2004
+;; author: Jan C. Thiele
+;; contact: jthiele@gwdg.de
+;; date: 04 july 2015
+;;
+;; file: patch_state.nls
+;; description: function to set state of patches depending on neighbors
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; set_state_single_patch procedure <patches> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to set_state_single_patch
+  ask patches 
+  [
+    ;; preparation: calculate dominance degree in layer III and IV (individual trees)     
+       let f3 count beechesIII-here
+       let gap4 8 - (sum [crownarea] of beechesIV-here)
+       
+    ;; test, if patch match one state
+       if not test_for_state1 f3 gap4
+       [
+         if not test_for_state2 f3 gap4
+         [
+           if not test_for_state3 f3 gap4
+           [
+             ;; if not state is matched, find nearest state
+                find_approx_state f3 gap4
+           ]         
+         ]
+        ]
+  ]
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; set_state_patch_with_neighbours procedure <patches> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to set_state_patch_with_neighbours
+  ask patches [
+               ;; statecounts list: [grow up, optimal, decay] --> then number of state can be used as index of list: 1, 2 or 3
+               ;; [state count]
+               let state1 0
+               let state2 0
+               let state3 0
+
+               ask neighbors [ 
+                               ;; increment state-counting: list[state] = list[state] + 1
+                               ifelse (state = 1)
+                               [ set state1 state1 + 1 ]
+                               [
+                                 ifelse (state = 2)
+                                 [ set state2 state2 + 1 ]
+                                 [ 
+                                   if (state = 3)
+                                   [ set state3 state3 + 1 ]
+                                 ]
+                               ]
+                             ]
+               ;; add own state  
+                  ifelse (state = 1)
+                  [ set state1 state1 + 1 ]
+                  [
+                    ifelse (state = 2)
+                    [ set state2 state2 + 1 ]
+                    [ 
+                      if (state = 3)
+                      [ set state3 state3 + 1 ]
+                    ]
+                  ]    
+                  
+               ;; find appropriate state with dependency to the neighboring states  
+               
+               ;; find state with highest frequency
+                               
+               ;; (1) count_GrowUp > count_Decay|count_Optimal
+               ifelse (state1 > state2) and (state1 > state3) 
+               [
+                 set stateneighbour 1
+               ]
+               [
+                 ;; (2) count_Optimal > count_GrowUp|count_Decay
+                 ifelse (state2 > state1) and (state2 > state3)
+                 [
+                   set stateneighbour 2
+                 ]
+                 [
+                   ;; (3) count_Decay > count_GrowUp|count_Optimal
+                   ifelse (state3 > state1) and (state3 > state2)
+                   [
+                     set stateneighbour 3
+                   ]
+                   [
+                     ;; (4) count_GrowUp = count_Optimal > count_Decay
+                     ifelse (state1 = state2) and (state1 > state3)
+                     [
+                       ifelse (state = 3)
+                       [ set stateneighbour 1 + random 2]
+                       [ set stateneighbour state ]
+                     ]
+                     [
+                       ;; (5) HS = count_Decay > count_Optimal
+                       ifelse (state1 = state3) and (state1 > state2)
+                       [
+                         ifelse (state = 2)
+                         [
+                           ifelse (random 2 = 0)
+                           [ set stateneighbour 1 ]
+                           [ set stateneighbour 3 ]
+                         ]
+                         [
+                           set stateneighbour state
+                         ]
+                       ]
+                       [
+                         ;; (6) count_Optimal = count_Decay > count_GrowUp
+                         ifelse (state2 = state3) and (state2 > state1)
+                         [
+                           ifelse (state = 1)
+                           [ set stateneighbour 2 + random 2 ]
+                           [ set stateneighbour state ]
+                         ]
+                         [
+                           ;; (7) count_GrowUp = count_Optimal = count_Decay
+                           ifelse (state1 = state2) and (state1 = state3)
+                           [
+                             set stateneighbour state
+                           ]
+                           [
+                             ;; (8) error
+                             set stateneighbour "error"
+                           ]
+                         ]
+                       ] 
+                     ] 
+                   ] 
+                 ]
+               ]                            
+             ]              
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; test_for_state1 reporter <patches> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to-report test_for_state1 [f3 gap4]
+  ifelse ((ddI >= 0.1) and (ddI <= 0.7) and (ddII >= 0.2) and (ddII <= 0.5) and (f3 >= 2) and (f3 <= 4) and (gap4 >= 2) and (gap4 <= 6))
+  [ 
+    set state 1
+    report true 
+  ]
+  [ report false ]
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; test_for_state2 reporter <patches> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to-report test_for_state2 [f3 gap4]
+  ifelse ((ddI <= 0.1) and (ddII <= 0.1) and (f3 <= 1) and (gap4 <= 1))
+  [ 
+    set state 2
+    report true 
+  ]
+  [ report false ]
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; test_for_state3 reporter <patches> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to-report test_for_state3 [f3 gap4]
+  ifelse ((ddI >= 0.2) and (ddI <= 0.8) and (ddII <= 0.5) and (f3 <= 1) and (gap4 >= 4) and (gap4 <= 8))
+  [ 
+    set state 3
+    report true 
+  ]
+  [ report false ]
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; find_approx_state procedure <patches> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to find_approx_state [f3 gap4]
+  ;; calculate difference to all states
+  let diff []
+  
+  set diff fput (list 1 (diff_to_state1 f3 gap4) random 100) diff
+  set diff fput (list 2 (diff_to_state2 f3 gap4) random 100) diff
+  set diff fput (list 3 (diff_to_state3 f3 gap4) random 100) diff
+  ;; random order
+  set diff sort-by [item 2 ?1 < item 2 ?2] diff  
+  ;; sort list by diff-value
+  set diff sort-by [item 1 ?1 < item 1 ?2] diff
+  ;; find state with minimal difference, if same, then randomly
+  set state item 0 first diff
+end
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; diff_to_state1 reporter <patches> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to-report diff_to_state1 [f3 gap4]
+  let dist 0.0
+  ifelse (ddI < 0.1)
+  [ set dist dist + (0.1 - ddI) * 100.0 ]
+  [
+    if (ddI > 0.7)
+    [ set dist dist + (ddI - 0.7) * 100.0 ]
+  ]
+  ifelse (ddII < 0.2)
+  [ set dist dist + (0.2 - ddII) * 100.0 ]
+  [
+    if (ddII > 0.5)
+    [ set dist dist + (ddII - 0.5) * 100.0 ]
+  ]
+  ifelse (f3 < 2)
+  [ set dist dist + (2.0 - f3) * 100.0 / 8.0 ]
+  [ 
+    if (f3 > 4)
+    [ set dist dist + (f3 - 4.0) * 100.0 / 8.0 ]
+  ]
+  ifelse (gap4 > 6)
+  [ set dist dist + (gap4 - 6.0) * 100.0 / 8.0 ]
+  [
+    if (gap4 < 2)
+    [ set dist dist + (2.0 - gap4) * 100.0 / 8.0 ]
+  ]
+  report dist
+end
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; diff_to_state2 reporter <patches> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to-report diff_to_state2 [f3 gap4]
+  let dist 0.0
+  if (ddI > 0.1)
+  [ set dist dist + (ddI - 0.1) * 100.0 ]
+  if (ddII > 0.1)
+  [ set dist dist + (ddII - 0.1) * 100.0 ]
+  if (f3 > 1)
+  [ set dist dist + (f3 - 1.0) * 100.0 / 8.0 ]
+  if (gap4 > 1)
+  [ set dist dist + (gap4 - 1.0) * 100.0 / 8.0 ]
+  report dist
+end
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; diff_to_state3 reporter <patches> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to-report diff_to_state3 [f3 gap4]
+  let dist 0.0
+  ifelse (ddI < 0.2)
+  [ set dist dist + (0.2 - ddII) * 100.0 ]
+  [
+    if (ddI > 0.8)
+    [ set dist dist + (ddI - 0.8) * 100.0 ]
+  ]
+  if (ddII > 0.5)
+  [ set dist dist + (ddII - 0.5) * 100.0 ] 
+  if (f3 > 1)
+  [ set dist dist + (f3 - 1.0) * 100.0 / 8.0 ]
+  if (gap4 < 4)
+  [ set dist dist + (4.0 - gap4) * 100.0 / 8.0 ]
+  report dist
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; colorize_patch_state procedure <patches> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to colorize_patch_state
+  ask patches [ 
+                ifelse state = 1 
+                [ set pcolor state1_color ]  
+                [
+                  ifelse state = 2
+                  [ set pcolor state2_color ]
+                  [
+                    ifelse state = 3
+                    [ set pcolor state3_color ]
+                    [ set pcolor blue ]
+                  ]
+                ]
+              ]
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; colorize_patch_stateneighbor procedure <patches> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to colorize_patch_stateneighbour
+  ask patches [ 
+                ifelse stateneighbour = 1 
+                [ set pcolor state1_color ]  
+                [
+                  ifelse stateneighbour = 2
+                  [ set pcolor state2_color ]
+                  [
+                    ifelse stateneighbour = 3
+                    [ set pcolor state3_color ]
+                    [ set pcolor blue ]
+                  ]
+                ]
+              ]
+end

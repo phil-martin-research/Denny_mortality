@@ -1,0 +1,143 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; BEFORE - Beech model
+;; based on: Neuert, C. 1999, Rademacher, C. 2004
+;; author: Jan C. Thiele
+;; contact: jthiele@gwdg.de
+;; date: 04 july 2015
+;;
+;; file: gap_closing.nls
+;; description: function to close gaps in main canopy layer
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; gap_closing <patches> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to gap_closing
+  ;; if upper crown is closed (no gaps), than competition
+  ifelse (sum [crownarea] of beechesIV-here = 8)
+  [
+    beechesIV_competition
+  ]
+  [
+    ;; if gap exists, than try to close them
+    close_gaps
+  ]  
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; close_gaps <patches> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to close_gaps
+
+  ;; get sum of beechIV-crowns
+     let sumcrownarea sum [crownarea] of beechesIV-here
+  
+  ;; rule 40: (1) increment crownarea of beechesIV
+     if (sumcrownarea < 8)
+     [
+       ask beechesIV-here
+       [
+         if (sumcrownarea < 8) 
+         [
+           set crownarea crownarea + 1
+           set sumcrownarea sumcrownarea + 1
+         ]
+       ]
+     ]
+
+  ;; (2) let beechesIII grow up into beechesIV
+    let newbeechIVlist []
+    if (sumcrownarea < 8)
+    [
+      ;; beechesIII with time in layerIII higher than min. time, sorted by descending time d 
+         foreach (sort-by [[d] of ?1 > [d] of ?2] beechesIII-here with [d >= dmin])
+         [ 
+           if (sumcrownarea < 8) 
+           [
+             ;; create new beechesIV - remaind beechesIV and its order to grow up their crowns to 2/8 in this order if possible
+                sprout-beechesIV 1 
+                [ 
+                  set crownarea 1
+                  set d -1 ;; set to -1, because beechesIV_change (d+1) will be executed for this new beech as well 
+                  set age [age] of ?
+                  set m mIV
+                  set newbeechIVlist lput self newbeechIVlist 
+                  set sumcrownarea sumcrownarea + 1
+                  
+                  if (tree_visualization != "trees")
+                  [
+                    hide-turtle
+                  ]
+                  
+                  ;; optical playaround
+                  if (distribute_trees)
+                  [
+                    set xcor xcor + random-float 1.0 - 0.5
+                    set ycor ycor + random-float 1.0 - 0.5
+                  ]
+                ]
+            ;; kill corresponding beechesIII (no deadwood, because this is now a IVbeech and not a dead tree)
+               ask ? [ die ] 
+           ]
+         ]  
+    ]
+    
+  ;; (3) let new beechesIV grow up their crowns to 2/8, if there are still gaps in layerIV
+    if (sumcrownarea < 8)
+    [
+      if (length newbeechIVlist > 0)
+      [
+        foreach newbeechIVlist 
+        [
+          if (sumcrownarea < 8)
+          [
+            ask ? 
+            [
+              set crownarea crownarea + 1
+              set sumcrownarea sumcrownarea + 1
+            ]
+          ]
+        ]
+      ]
+    ]
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; beechesIV_competition <patches> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to beechesIV_competition
+  ;; if more than one beechIV, than competition
+     if (count beechesIV-here > 1)
+     [
+       ;; probability of IVcomp (50 %) for increasing biggest beechIV and decreasing smallest beechIV crown (if min. 2 beechesIV and sum of crown areas > 8)
+          if (random-float 1.0 < IVcomp)
+          [
+            ;; find biggest and smallest tree, order agentset ascending by age and then by crownarea, trees with same crownarea and age are random sorted
+               let beechesIVlist sort-by [[d] of ?1 < [d] of ?2] beechesIV-here
+               set beechesIVlist sort-by [[crownarea] of ?1 < [crownarea] of ?2] beechesIVlist  
+       
+            ;; reduce crownarea of smallest tree
+               ask first beechesIVlist 
+               [ set crownarea crownarea - 1 ] 
+            ;; if crownarea is 0, then kill beech
+               if [crownarea] of first beechesIVlist = 0 
+               [ 
+                 ask first beechesIVlist 
+                 [ 
+                   set crownarea 1
+                   create_IV_deadwood
+                   die 
+                 ]
+               ]
+  
+            ;; increase crownarea of biggest tree
+               ask last beechesIVlist 
+               [ set crownarea crownarea + 1 ]         
+          ]         
+     ]  
+end

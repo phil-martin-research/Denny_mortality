@@ -1,0 +1,265 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; BEFORE - Beech model
+;; based on: Neuert, C. 1999, Rademacher, C. 2004
+;; author: Jan C. Thiele
+;; contact: jthiele@gwdg.de
+;; date: 04 july 2015
+;;
+;; ddIle: parameter.nls
+;; description: parameter values
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ 
+
+beechesIII-own [age d dmin]                 ;; age of tree, duration of being in layer III, min. duration for being in layer III before moving to layer IV
+beechesIV-own [age crownarea d m]                   ;; age of tree, area of crown, duration of being in layer IV; mortality-rate
+sdeads-own [parent age IVbeech? crown deaddur vol broken? ]              ;; parent tree (the tree which died), age of the died tree, type (false:IIIbeech or true:IVbeech), crown area of died tree (0 for IIIbeech), time of being dead
+ldeads-own [parent age IVbeech? crown deaddur vol]              ;; parent tree (the tree which died), age of the died tree, type (false:IIIbeech or true:IVbeech), crown area of died tree (0 for IIIbeech), time of being dead
+patches-own [state stateneighbour ddI ddII ddII_1 ddII_2 ddII_3 LF mI mII mIII ptilt]       ;; state (grow up = 1, optimal = 2, decay = 3), dominance degree layer I, dominance degree layer II, time counter (>= 45 years, =0 if ddII=0) to create new beechesIII,
+                                                                       ;; light factor, mortality rate layer I, mortality rate layer II, mortality rate layer III, mortality rate layer IV
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; global parameters ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+globals [
+  
+ ;; sorted agentset of patches for winddirections: "E" "SE" "S" SW", sort x 0 to max, y max to 0
+    patchlist_wind1
+ ;; sorted agentset of patches giving the processing order for winddirections: for "W" "NW" "N" "NE", sort y max to 0, x 0 to max
+    patchlist_wind2
+    
+ ;; agentset of patches within the boundaries of result analysis
+    boundarylist 
+    
+ ;; year counter (ticks * simstep_width) 
+    year
+ ;; width (years) of one simulation step
+    simstep_width
+
+ ;; possible wind directions (do not change the order of the list!)
+    winddir
+ ;; relative shift in x- and y-coordinates due to wind direction (in reverse direction, e.g for "SW": [1 1])
+    wd_xy
+ ;; main wind direction
+    ;; value range: sw, after Wagner 1907
+    mwd 
+  ;; probability of damaging wind event
+    ;; value range: 1, after Wagner 1907
+    pWindOccurence
+ ;; probability of wind directions (order changed in "initialize_winddirectionprob")
+    pwindlist
+ ;; wind dirction probabilies depending on main wind direction   
+    pwind
+ ;; probability of different wind strength [occurrence probability, damage probability]   
+    ;; probabilty of tree damage caused by slow wind event
+       ;; value range: 0 - 0.002, estimated after Wagner 1907
+    ;; probabilty of tree damage caused by medium wind event
+       ;; value range: 0.002 - 0.02, estimated after Faille et al. 1984
+    ;; probabilty of tree damage caused by extrem wind event
+       ;; value range: 0.003 - 1, estimated
+    pwindstrength
+ ;; modiddIcation parameter of tree falling probability within the main canopy layer
+    ;; value range: 0.001 - 50, estimated
+    epkipp
+ ;; current wind strength
+    windstrength 
+ ;; current wind direction
+    windhere
+ ;; current x- and y-coordinate shift due to wind direction (reverse direction, e.g. "N": [0 1] 
+    wd
+ ;; see interface: monitor to show winddirection and strength
+    wind_info
+    
+ ;; probability that a beechIV tree is damaged when wind occurs in patch and ptilt is matched
+    windDamageIV
+
+ ;; probability that a beechIII tree is damaged when wind occurs in patch and ptilt is matched
+    windDamageIII
+             
+ ;; value of light of main canopy layer (layer IV)
+    ;; value range: 0.001 - 0.02, estimated
+    lIV
+ ;; value of light of lower canopy layer (layer III)
+    ;; value range: 0 - 0.003, estimated
+    lIII
+
+ ;; max. mortality rate seedlings (layer I), adapted by lightfactor
+    ;; value range: 1, after Burschel & Schmaltz 1965, Peters 1992, Watt 1923 
+    mImax
+ ;; max. mortality rate young trees (layer II), adapted by lightfactor
+    ;; value range: 0.4 - 1, estimated 
+    mIImax
+ ;; max. mortality rate lower canopy layer (layer III), adapted by lightfactor
+    ;; value range: 0 - 0.4, estimated
+    mIIImax
+ ;; mortality rate main canopy layer (layer IV)
+    ;; value range: 0 - 0.002, estimated after Jenssen & Hofmann 1997 
+    mIV
+ ;; probability for competition between smallest and largest beechIV
+    IVcomp
+
+ ;; max. age
+    ;; value range: 150 - 350, after Assmann 1961, Fröhlich 1954, Holm 1995, Peters 1992, Remmert 1988
+    agemax
+ ;; increasing rate of mortality rate with age over agemax
+    ;; value: 0.3 for every 15 years
+    mIVage
+
+ ;; max length of stay within layer III (in time steps)
+    ;; value range: 4 - 6, estimated
+    stayIIImax
+
+ ;; min time to stay in layer III
+    minDIII
+
+ ;; max. value of light factor
+    LFmax
+
+ ;; max entry of seedlings
+    ;; value range: 1, after Assmann 1961, Knapp & Jeschke 1991
+    smax
+
+ ;; probability of growth from layer II into layer III
+    ;; value range: 0.7 - 1, estimated after Assmann 1961, Kennel 1966, Korpel 1992
+    wmax
+
+ ;; duration of standing a dead IVbeech 
+    dead_ageIV 
+ 
+ ;; fungus probability (dead tree will fall directly)
+    fungus_prob
+ 
+ ;; list of IVbeech volume [m^3] by crownsize
+    IVbeechvolume
+
+ ;; list of IIIbeech volume [m^3] by duration in layer 3 
+    IIIbeechvolume
+      
+ ;; switch off the neighbourhood interaction light (use only the patch itself), to reproduce fig. 7c and 7d in Rademacher et al. (2004)   
+    switch-off-neighbourhood-interaction-light
+ 
+ ;; switch off wind, to reproduce fig. 7b and 7c in Rademacher et al. (2004)
+    switch-off-wind 
+    
+ ;; color of grow up state
+   state1_color 
+ ;; color of optimal state
+   state2_color 
+ ;; color of decay state
+   state3_color 
+  
+ ;; list of counts of grow up
+    growupcount_list 
+ ;; list of counts of optimal
+    optimalcount_list
+ ;; list of counts of decay
+    decaycount_list
+ ;; mean grow up state percent
+    meangrowuppercent
+ ;; mean optimal state percent
+    meanoptimalpercent
+ ;; mean decay state percent
+    meandecaypercent
+ 
+ ;; list of counts of standing deadwood 
+    sdeadcount_list
+ ;; list of counts of laying deadwood 
+    ldeadcount_list
+ ;; list of sum of volume of standing deadwood
+    sdeadvol_list 
+ ;; list of sum of volume of laying deadwood
+    ldeadvol_list 
+ ;; mean standing deadwood
+    meansdeadcount
+ ;; mean laying deadwood
+    meanldeadcount
+ ;; mean volume of standing deadwood
+    meansdeadvol
+ ;; mean volume of  laying deadwood
+    meanldeadvol
+]  
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; parameterize procedure ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to parameterize
+
+  set patchlist_wind1 sort-by [[pxcor] of ?1 > [pxcor] of ?2] patches
+  set patchlist_wind1 sort-by [[pycor] of ?1 < [pycor] of ?2] patchlist_wind1
+
+  set patchlist_wind2 sort-by [[pxcor] of ?1 < [pxcor] of ?2] patches
+  set patchlist_wind2 sort-by [[pycor] of ?1 > [pycor] of ?2] patchlist_wind2
+       
+  set year 0
+  set simstep_width 15
+
+  set mwd "SW"
+  set winddir ["N" "NE" "E" "SE" "S" "SW" "W" "NW"]
+  ;; for mwd = "SW" -> ["SW" "W" "NW" "N" "NE" "E" "SE" "S"]
+  set pwindlist [0.29 0.26 0.11 0.01 0.01 0.26 0.03 0.03]
+  ;; order of wd_xy: ["N" "NE" "E" "SE" "S" "SW" "W" "NW"]
+  set wd_xy [[[0 1]] [[1 1]] [[1 0]] [[1 -1]] [[0 -1]] [[-1 -1]] [[-1 0]] [[-1 1]]]
+  set pwind [0 0 0 0 0 0 0 0]
+  set pWindOccurence 1.0 ; 0.0 ; 0.75
+  set pwindstrength [[0.0 0.001] [0.89 0.002] [0.99 0.004]]
+  set epkipp 19.0; 21; 19.0
+  set windstrength 0.0
+  set windhere ""
+  set wd []
+  set wind_info ""
+  
+  set windDamageIV 1.0
+  set windDamageIII 0.5
+  
+  set lIV 0.008
+  set lIII 0.002
+
+  set mImax 1.0
+  set mIImax 1.0
+  set mIIImax 0.03
+  set mIV 0.001
+
+  set IVcomp 0.5
+  
+  set agemax 300
+  set mIVage 0.3
+
+  set stayIIImax 6
+  
+  set minDIII 1
+
+  set LFmax 80 * (lIV + lIII) 
+
+  set smax 1.0 ; 0.8
+
+  set wmax 1.0
+
+  set dead_ageIV 2.0
+  
+  set fungus_prob 0.5
+  
+  set IVbeechvolume (list 2.0 4.0 7.0 8.0 9.0 10.0 10.5 11.0)
+  set IIIbeechvolume (list 1.0 1.5)   
+
+
+  set switch-off-neighbourhood-interaction-light false
+  set switch-off-wind false
+    
+  set state1_color 45 ; 45 yellow
+  set state2_color 55 ; 55 green
+  set state3_color 15 ; 15 red
+  
+  set sdeadcount_list []
+  set ldeadcount_list []
+  set sdeadvol_list [] 
+  set ldeadvol_list []   
+  
+  set growupcount_list [] 
+  set optimalcount_list []
+  set decaycount_list []
+  
+
+  random-seed new-seed ;1234567
+end

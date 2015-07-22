@@ -1,0 +1,417 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; BEFORE - Beech model
+;; based on: Rademacher, C. 2003
+;; author: Jan C. Thiele
+;; contact: jthiele@gwdg.de
+;; date: 04 july 2015
+;;
+;; file: deadwood.nls
+;; description: dynamic of the deadwood in the forest
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; update_deadwood <observer> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; description: update the deadwood, delete the lying deadwood; distribute the old standing deadwood; break the middleold standing deadwood
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to update_deadwood
+  ;; executed this at the beginning of a simulation step
+  
+  ;; 1. reset lying deeadwood (because length of stay max. 15 years = 1 simulation step)
+     ask ldeads 
+     [ die ]
+     
+  ;; 2. standing deadwood from IIIbeeches becomes lying deadwood (because length of stay max. 15 years) 
+     ask sdeads with [IVbeech? = false]
+     [
+       hatch-ldeads 1
+       [ 
+         if (tree_visualization != "trees")
+         [
+           hide-turtle
+         ]
+       ]           
+       die
+     ]
+     
+  ;; 3. if age of standing IV-deadwood > dead_ageIV, then become lying deadwood (max. 10 meter high, because its older than dead_age4/2)
+     ask sdeads with [deaddur > dead_ageIV]
+     [
+       hatch-ldeads 1 
+       [ 
+         if (tree_visualization != "trees")
+         [
+           hide-turtle
+         ]
+       ]
+       die
+     ]
+  
+  ;; 4. if age of standing IV-deadwood > dead_ageIV/2, then break at 10 Meters and let the rest fall into the cell itself and one neighbour in wind direction
+     ask sdeads with [(deaddur > (dead_ageIV / 2)) and (broken? = false)]
+     [
+       let vollying 3.0 * vol / 8.0
+       let pagehere age
+       let pcrownhere crown
+       let deaddurhere deaddur
+       let ptypehere IVbeech?
+       let parenthere parent     
+       set broken? true  
+       ;; set standing volume to 1/4
+       set vol vol / 4.0
+       ;; set lying volume at this patch to 3/8
+       hatch-ldeads 1 
+       [ 
+         set vol vollying
+         if (tree_visualization != "trees")
+         [
+           hide-turtle
+         ]
+       ]
+       ;; set lying volume at neighbour patch to 3/8   
+       let rwd1 replace-item 0 wd list (item 0 item 0 wd * -1) (item 1 item 0 wd * -1)
+       ask patches at-points rwd1 
+       [
+         sprout-ldeads 1 
+         [ 
+           set vol vollying 
+           set age pagehere
+           set crown pcrownhere
+           set deaddur deaddurhere
+           set IVbeech? ptypehere
+           set parent parenthere
+           if (tree_visualization != "trees")
+           [
+             hide-turtle
+           ]
+         ] 
+       ]           
+     ]     
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; ageincrement_deadwood <observer> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; description: increment the age of teh standing deadwood (execute this at the end of a simulation step)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to ageincrement_deadwood
+  ;; 13. increment the age of the standing deadwood
+     ask sdeads
+     [ set deaddur deaddur + 1 ]
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; create_III_deadwood <IIIbeech> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; description: the creation of IIIbeech-deadwood after the death of a IIIBeech
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to create_III_deadwood
+ let sumvol 0.0
+ ifelse (d < dmin)
+ [ set sumvol item 0 IIIbeechvolume ]
+ [ set sumvol item 1 IIIbeechvolume ]
+ ;; break at 10 Meters?
+ ifelse (random-float 1.0 < fungus_prob)
+ [
+   ;; 1/3 as standing deadwood
+      hatch-sdeads 1
+      [ 
+        set vol sumvol / 3.0
+        set IVbeech? false
+        set parent [who] of myself
+        ;; a stump will become lying deadwood within dead_age/2 simulation steps
+        set deaddur dead_ageIV / 2.0
+        set broken? true
+        if (tree_visualization != "trees")
+        [
+          hide-turtle
+        ]
+      ]
+   ;; 2/3 as lying deadwood
+      hatch-ldeads 1
+      [ 
+        set vol 2.0 * sumvol / 3.0 
+        set IVbeech? false
+        set parent [who] of myself
+        set deaddur 0
+        if (tree_visualization != "trees")
+        [
+          hide-turtle
+        ]
+      ]
+ ]
+ [
+   ;; whole tree as standing deadwood
+      hatch-sdeads 1
+      [ 
+        set vol sumvol 
+        set IVbeech? false
+        set parent [who] of myself
+        set deaddur 0   
+        set broken? false  
+        if (tree_visualization != "trees")
+        [
+          hide-turtle
+        ]   
+      ]
+ ]
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; create_III_deadwood <IIIbeech> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; description: the creation of IIIbeech-deadwood after the death of a IIIBeech
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to create_III_deadwood_windbreak
+  let sumvol 0.0
+  ifelse (d < dmin)
+  [ set sumvol item 0 IIIbeechvolume ]
+  [ set sumvol item 1 IIIbeechvolume ]
+
+  ;; 2/3 as lying deadwood in the cell itself
+  hatch-ldeads 1
+  [ 
+    set vol 2.0 * sumvol / 3.0 
+    set IVbeech? false
+    set parent [who] of myself
+    set deaddur 0
+    if (tree_visualization != "trees")
+    [
+      hide-turtle
+    ]
+  ]
+  ;; 1/3 in the neighbour cell in wind direction
+  let agehere age
+  let parenthere who
+  ;; distribute the lying deadwood to the cell itself and one neighbour cell in wind direction (each with 3/8 vol.)
+  let rwd1 replace-item 0 wd list (item 0 item 0 wd * -1) (item 1 item 0 wd * -1)
+  ask patches at-points rwd1 
+  [
+    sprout-ldeads 1
+    [
+      set vol sumvol / 3.0
+      set IVbeech? false
+      set parent parenthere
+      set deaddur dead_ageIV / 2.0
+      set age agehere
+      if (tree_visualization != "trees")
+      [
+        hide-turtle
+      ]
+    ]
+  ]
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; create_IV_deadwood <IVbeech> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; description: the creation of IVbeech-deadwood after the death of a IVBeech
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to create_IV_deadwood
+  ;; if there are 3 standing dead trees, than change the oldest one into lying deadwood
+  if ((count sdeads-here) >= 3)
+  [ reduce_staying_deadwood ]
+  
+  let sumvol item (crownarea - 1) IVbeechvolume
+  ;let sumvol item 0 IVbeechvolume
+ 
+  ;; break at 10 Meters?
+  ifelse (random-float 1.0 < fungus_prob)
+  [
+    hatch-sdeads 1
+    [
+      set vol sumvol / 4.0
+      set IVbeech? true
+      set parent [who] of myself
+      set crown [crownarea] of myself
+      ;; a stump will become lying deadwood within dead_age/2 simulation steps
+      set deaddur dead_ageIV / 2.0
+      set broken? true    
+      set size 1
+      if (tree_visualization != "trees")
+      [
+        hide-turtle
+      ]
+    ]
+    let agehere age
+    let crownhere crownarea
+    let parenthere who
+    ;; distribute the lying deadwood to the cell itself and one neighbour cell in wind direction (each with 3/8 vol.)
+    let rwd0 [[0 0]]
+    let rwd1 replace-item 0 wd list (item 0 item 0 wd * -1) (item 1 item 0 wd * -1)
+    foreach (list rwd0 rwd1) 
+    [
+      ask patches at-points ? 
+      [
+        sprout-ldeads 1
+        [
+          set vol 3.0 * sumvol / 8.0
+          set IVbeech? true
+          set parent parenthere
+          set crown crownhere
+          set age agehere
+          set size 1  
+          if (tree_visualization != "trees")
+          [
+            hide-turtle
+          ]      
+        ]
+      ]
+    ]   
+  ]
+  [
+    ;; if tree will not break, the whole tree becomes standing deadwood
+    hatch-sdeads 1
+    [
+      set vol sumvol
+      set IVbeech? true
+      set parent [who] of myself
+      set crown [crownarea] of myself
+      set deaddur 0
+      set broken? false   
+      set size 1
+      if (tree_visualization != "trees")
+      [
+        hide-turtle
+      ]
+    ]
+  ] 
+end
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; create_IV_deadwood_wind <IVbeech> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; description: the creation of IVbeech-deadwood after the death of a IVBeech
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to create_IV_deadwood_windfall
+  let sumvol item (crownarea - 1) IVbeechvolume
+  let agehere age
+  let crownhere crownarea
+  let parenthere who
+  ;; distribute the lying deadwood to the cell itself and two neighbour cells in wind direction (each with 1/3 vol.)
+  let rwd0 [[0 0]]
+  let rwd1 replace-item 0 wd list (item 0 item 0 wd * -1) (item 1 item 0 wd * -1)
+  let rwd2 replace-item 0 rwd1 list (item 0 item 0 rwd1 * 2) (item 1 item 0 rwd1 * 2) 
+  foreach (list rwd0 rwd1 rwd2) 
+  [
+    ask patches at-points ? 
+    [
+      sprout-ldeads 1
+      [
+        set vol sumvol / 3.0
+        set IVbeech? true
+        set parent parenthere
+        set crown crownhere
+        set age agehere
+        set size 1
+        if (tree_visualization != "trees")
+        [
+          hide-turtle
+        ]
+      ]
+    ]
+  ]   
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; create_IV_deadwood_wind <IVbeech> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; description: the creation of IVbeech-deadwood after the death of a IVBeech
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to create_IV_deadwood_windbreak
+  ;; if there are 3 standing dead trees, than change the oldest one into lying deadwood
+  if ((count sdeads-here) >= 3)
+  [ reduce_staying_deadwood ]
+
+  let sumvol item (crownarea - 1) IVbeechvolume
+  hatch-sdeads 1
+  [
+    set vol sumvol / 4.0
+    set IVbeech? true
+    set parent [who] of myself
+    set crown [crownarea] of myself
+    ;; a stump will become lying deadwood within dead_age/2 simulation steps
+    set deaddur dead_ageIV / 2.0
+    set broken? true    
+    set size 1
+    if (tree_visualization != "trees")
+    [
+      hide-turtle
+    ]
+  ]
+  let agehere age
+  let crownhere crownarea
+  let parenthere who
+  ;; distribute the lying deadwood to the cell itself and one neighbour cell in wind direction (each with 3/8 vol.)
+  let rwd0 [[0 0]]
+  let rwd1 replace-item 0 wd list (item 0 item 0 wd * -1) (item 1 item 0 wd * -1) 
+  foreach (list rwd0 rwd1) 
+  [
+    ask patches at-points ? 
+    [
+      sprout-ldeads 1
+      [
+        set vol 3.0 * sumvol / 8.0
+        set IVbeech? true
+        set parent parenthere
+        set crown crownhere
+        set age agehere
+        set size 1
+        if (tree_visualization != "trees")
+        [
+          hide-turtle
+        ]
+      ]
+    ]
+  ] 
+end
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; reduce_staying_deadwood <sdead> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; description: move the oldest staying deadwood to lying deadwood
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to reduce_staying_deadwood
+  ;; find oldest staying deadwood and transform it into lying deadwood
+  ask max-one-of sdeads-here [deaddur]
+  [
+    let sumvol vol
+    let agehere age
+    let crownhere crown
+    let parenthere who   
+    let deaddurhere deaddur 
+    let IVbeechhere IVbeech?
+    ;; distribute the lying deadwood to the cell itself and two neighbour cells in wind direction (each with 1/4 vol.)
+    let rwd0 [[0 0]]
+    let rwd1 replace-item 0 wd list (item 0 item 0 wd * -1) (item 1 item 0 wd * -1)
+    let rwd2 replace-item 0 rwd1 list (item 0 item 0 rwd1 * 2) (item 1 item 0 rwd1 * 2) 
+    foreach (list rwd0 rwd1 rwd2) 
+    [
+      ask patches at-points ? 
+      [
+        sprout-ldeads 1
+        [
+          set vol sumvol / 3.0
+          set age agehere
+          set crown crownhere
+          set parent parenthere
+          set IVbeech? IVbeechhere
+          set deaddur deaddurhere
+          if (tree_visualization != "trees")
+          [
+            hide-turtle
+          ]
+        ]
+      ]
+    ]
+    die
+  ] 
+end
+
+
+

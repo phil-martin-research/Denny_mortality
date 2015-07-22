@@ -1,0 +1,454 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; BEFORE - Beech model
+;; based on: Neuert, C. 1999, Rademacher, C. 2004
+;; author: Jan C. Thiele
+;; contact: jthiele@gwdg.de
+;; date: 04 july 2015
+;;
+;; file: initialization.nls
+;; description: initialization of the model/patches and turtles
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ 
+
+; initial_state ; switch: "virgin", "harvested", "plentered", "randomly" - moved to interface 
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; initialize_forest procedure ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ 
+to initialize_forest
+  ;; set initial state of forest 
+    if initial_state = "virgin"    [ virgin ]
+    if initial_state = "harvested" [ harvested ]
+    if initial_state = "selection cutting" [ selectionCutting ]
+    if initial_state = "random"  [ randomForest ]
+end
+
+
+
+;;xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx;;
+;; states of forest ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx;;
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; harvested procedure ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to harvested
+  print "create harvested forest..."  
+  ;; dominance degree layer I:   50 %
+  ;; dominance degree layer II:  0 %
+  ;; dominance degree layer III: 0 %
+  ;; dominance degree layer IV:  0 %
+  ask patches [
+                ;; all cells are in grow up state
+                set state 1
+                set ddI 0.5  
+                set ddII_1 0.0
+                set ddII_2 0.0
+                set ddII_3 0.0
+                set ddII 0.0
+              ]
+end
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; plentered procedure ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to selectionCutting
+  print "create selection cutting forest..."
+  ;; dominance degree layer I:   20 - 40 %
+  ;; dominance degree layer II:  10 - 30 %
+  ;; dominance degree layer III: 20 - 35 %
+  ;; dominance degree layer IV:  50 - 75 %
+  ask patches 
+  [ 
+    ;; all cells are in grow up state
+       set state 1
+       set ddI 0.2 + 0.2 * random-float 1.0
+       set ddII 0.2 + 0.2 * random-float 1.0  ;; comment: difference to dissertation
+       set ddII_1 0.0
+       set ddII_2 0.0
+       set ddII_3 0.0
+                     
+    ;; random number of beechIII trees, between 2 and 3 (20 - 35 % --> x * 12.5)
+       let randIII 2 + random 2
+       create_initial_beechIII randIII 120
+    ;; random number of beechIV dominance degree (50 - 75 % --> x * 12.5)
+       let crownddIV 4 + random 3
+       create_initial_beechIV crownddIV 61 1
+  ]
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; randomly procedure ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to randomForest 
+  print "create random forest..."
+  ask patches 
+  [
+    ;; each cell has probability of 1/3 to be in one of the three states
+       let rand random 3
+       ifelse rand = 0
+       [ virgin_growup_state ]
+       [  
+         ifelse rand = 1
+         [ virgin_optimal_state ]
+         [ virgin_decay_state ]
+       ]
+  ]
+end
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; virgin procedure ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+breed [ ges ge]
+ges-own [ index_xx state_xx ]
+
+to virgin
+  print "create virgin forest..."
+  ;; 35-38% of cells -> grow up state
+  ;; 20-22% of cells -> optimal state
+  ;; 42-45% of cells -> decay state
+
+  ;; 1. percentage of states
+    let perc_state1 35 + random 4
+    let perc_state2 20 + random 3
+    let perc_state3 100 - perc_state1 - perc_state2
+  
+  ;; 2. transformation to number of neighbourhood areas (3*3 patches)
+    let count_ge floor(floor((world-width + 2) / 3.0) * floor((world-height + 2) / 3.0))
+    
+    let n_ge_state [[] [] []]
+    set n_ge_state replace-item 0 n_ge_state (list 1 floor (count_ge * perc_state1 / 100.0))
+    set n_ge_state replace-item 1 n_ge_state (list 2 floor (count_ge * perc_state2 / 100.0))
+    set n_ge_state replace-item 2 n_ge_state (list 3 floor (count_ge * perc_state3 / 100.0))
+ 
+   ;; 3. rest  
+  ;; sort list in a new temporarly one
+    let n_ge_state_sort sort-by [ item 1 ?1 > item 1 ?2] n_ge_state
+    let rest_ge_sum ((count_ge * perc_state1 / 100.0) - item 1 item 0 n_ge_state) + ((count_ge * perc_state2 / 100.0) - item 1 item 1 n_ge_state) + ((count_ge * perc_state3 / 100.0) - item 1 item 2 n_ge_state)   
+    if (rest_ge_sum > 0.9)
+    [
+      set n_ge_state replace-item ((item 0 item 0 n_ge_state_sort) - 1) n_ge_state (list ((item 0 item 0 n_ge_state_sort)) ((item 1 item 0 n_ge_state_sort) + 1))
+    ]
+    if (rest_ge_sum > 1.9)
+    [
+      set n_ge_state replace-item ((item 0 item 1 n_ge_state_sort) - 1) n_ge_state (list ((item 0 item 1 n_ge_state_sort)) ((item 1 item 1 n_ge_state_sort) + 1))
+    ]
+  
+  let loopcount 0
+  let diff 1000
+  while [(diff > 0) and (loopcount < 50)]
+  [
+    ;; reset patches and turtles
+       clear-patches
+       clear-turtles
+    ;; increment loop counter
+       set loopcount loopcount + 1
+   
+     ;; 4. distribute states to neighbourhood areas
+     ;; 4a. create turtles
+       let it 0
+       create-ges count_ge 
+       [ set index_xx it
+         set it it + 1  
+         set hidden? true
+       ] 
+       
+     ;; 4b. set state of ge_turtles (in random order)
+       let stco 1 
+       ask ges 
+       [
+         ifelse (stco <= item 1 item 0 n_ge_state)
+         [ set state_xx 1 ] 
+         [
+           ifelse (stco <= ((item 1 item 0 n_ge_state) + (item 1 item 1 n_ge_state)))
+           [ set state_xx 2 ]
+           [ 
+             ifelse (stco <= ((item 1 item 0 n_ge_state) + (item 1 item 1 n_ge_state) + (item 1 item 2 n_ge_state)))
+             [ set state_xx 3 ]
+             [ show "error...." 
+               show ((item 1 item 0 n_ge_state) + (item 1 item 1 n_ge_state) + (item 1 item 2 n_ge_state))
+               show stco
+             ]    
+           ]
+         ]
+         set stco stco + 1
+       ]
+       
+     ;; 4c. distribute the ges over the grid
+       let ge_counter 0
+     
+       let xval min-pxcor + 1
+       let yval min-pycor + 1
+     
+       while [xval <= max-pxcor]
+       [     
+         while [yval <= max-pycor]
+         [
+           let statehere item 0 [state_xx] of ges with [index_xx = ge_counter]     
+           ask patch xval yval
+           [
+             set state statehere
+             ask neighbors [ set state statehere ]
+           ]
+           ;; if current patch is the last one, but there is one patch in x-dicrection missing (rest)         
+           if (xval + 2 = max-pxcor)
+           [
+             let li (list (list max-pxcor (yval - 1)) (list max-pxcor yval) (list max-pxcor (yval + 1)))
+             ask patches at-points li
+             [ set state statehere ]
+           ]
+           ;; if current patch is the last one, but there is one patch in y-dicrection missing (rest)         
+           if (yval + 2 = max-pycor)
+           [
+             let li (list (list (xval - 1) max-pycor) (list xval max-pycor) (list (xval + 1) max-pycor))
+             ask patches at-points li [ set state statehere ]
+           ]
+           ;; if current patch is the last one, but there is one patch missing (rest) 
+           if (xval + 2 = max-pxcor) and (yval + 2 = max-pycor)
+           [
+             let li (list (list max-pxcor max-pycor))
+             ask patches at-points li [ set state statehere ]      
+           ]
+           ;; increment y-coordinate      
+           set yval yval + 3
+           set ge_counter ge_counter + 1
+         ]
+         ; increment x-coordinate
+         set xval xval + 3
+         set yval min-pycor + 1
+       ]
+
+     ;; generate layers due to state
+        ask patches
+        [
+          ifelse (state = 1)
+          [
+            virgin_growup_state 
+          ]
+          [
+            ifelse (state = 2)
+            [
+              virgin_optimal_state 
+            ]
+            [
+              ifelse (state = 3)
+              [
+                virgin_decay_state 
+              ]
+              [
+                show "error...."
+              ]
+            ]
+          ] 
+        ]
+     
+     ;; set state
+        set_state_single_patch 
+     
+     ;; set state neighbour dependent
+        set_state_patch_with_neighbours
+     
+     ;; calculate current state distribution
+        let sum_count count patches
+        let state1_perc count patches with [stateneighbour = 1] / sum_count * 100.0
+        let state2_perc count patches with [stateneighbour = 2] / sum_count * 100.0
+        let state3_perc count patches with [stateneighbour = 3] / sum_count * 100.0
+     
+     ;; calculate difference
+        let diff1 0
+        let diff2 0
+        let diff3 0
+        ifelse (state1_perc < 35)
+        [ set diff1 state1_perc - 35 ]
+        [
+          if (state1_perc > 38)
+          [ set diff1 state1_perc - 38 ]
+        ]
+    
+        ifelse (state2_perc < 20)
+        [ set diff2 state2_perc - 20 ]
+        [
+          if (state2_perc > 22)
+          [ set diff2 state2_perc - 22 ]
+        ]
+     
+        ifelse (state3_perc < 42)
+        [ set diff3 state3_perc - 42 ]
+        [
+          if (state3_perc > 45)
+          [ set diff3 state3_perc - 45 ]
+        ]
+    
+        set diff sqrt ((diff1 * diff1) + (diff2 * diff2) + (diff3 * diff3))
+        ;show diff
+  ] ; end while
+  ;show (list "diff" diff)
+end
+
+
+
+;;xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx;;
+;; states of cells ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx;;
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; virgin_growup_state procedure <patches> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to virgin_growup_state 
+  set state 1
+  ;; dominance degree layer I:   10 - 70 %
+  ;; dominance degree layer II:  20 - 50 %
+  ;; dominance degree layer III: 20 - 50 %
+  ;; dominance degree layer IV:  20 - 80 %
+     set ddI 0.1 + 0.6 * random-float 1.0       
+     set ddII 0.2 + 0.3 * random-float 1.0
+     set ddII_1 0.0
+     set ddII_2 0.0
+     set ddII_3 0.0
+  ;; random number of beechIII trees, between 2 and 4 (25 - 50 % --> x * 12.5)
+     let randIII 2 + random 3
+  create_initial_beechIII randIII 210
+  ;; random number of beechIV dominance degree (20 - 80 % --> x * 12.5)
+     let crownddIV 2 + random 5
+  create_initial_beechIV crownddIV (agemax - 89) 0
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; virgin_optimal_state procedure <patches> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to virgin_optimal_state
+  set state 2
+  ;; dominance degree layer I:    0 - 10 %
+  ;; dominance degree layer II:   0 - 10 %
+  ;; dominance degree layer III:  0 - 10 %
+  ;; dominance degree layer IV:  85 - 100 %
+     set ddI 0.1 * random-float 1.0
+     set ddII 0.1 * random-float 1.0
+     set ddII_1 0.0
+     set ddII_2 0.0
+     set ddII_3 0.0  
+  ;; random number of beechIII trees, between 0 and 2 (25 - 50 % --> x * 12.5)
+     let randIII random 2
+  create_initial_beechIII randIII 210
+  ;; random number of beechIV dominance degree (85 - 100 % --> x * 12.5)
+     let crownddIV 7 + random 2
+  create_initial_beechIV crownddIV (agemax - 89) 0          
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; virgin_decay_state procedure <patches> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to virgin_decay_state 
+  set state 3 
+  ;; dominance degree layer I:   20 - 80 %
+  ;; dominance degree layer II:   0 - 50 %
+  ;; dominance degree layer III:  0 - 20 %
+  ;; dominance degree layer IV:   0 - 50 %
+     set ddI 0.2 + 0.6 * random-float 1.0
+     set ddII 0.5 * random-float 1.0  
+     set ddII_1 0.0
+     set ddII_2 0.0
+     set ddII_3 0.0  
+  ;; random number of beechIII trees, between 0 and 3 (0 - 20 % --> x * 12.5)
+     let randIII random 2
+  create_initial_beechIII randIII 210   
+  ;; random number of beechIV dominance degree (0 - 50 % --> x * 12.5)
+     let crownddIV random 5
+  create_initial_beechIV crownddIV (agemax - 89) 0   
+end
+
+
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; create_initial_beechIII <turtles - beechesIII> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to create_initial_beechIII [beechIIIcount maxage]
+  sprout-beechesIII beechIIIcount
+  [ 
+    set age 60 + random (maxage - 60 + 1)  
+    let dtime 0
+    ifelse (age <= 120)
+    [
+      set dtime random (age - 59)
+    ]
+    [
+      ifelse (age <= 150)
+      [
+        set dtime random 61 + age - 120
+      ]
+      [
+        set dtime 90 - random (211 - age)
+      ]
+    ]
+    set d floor(dtime / simstep_width)
+    ifelse (d = 1)
+    [ set dmin minDIII - 1 ]
+    [ set dmin minDIII ]
+    if (dmin < 0)
+    [ set dmin 0 ]
+    
+    if (tree_visualization != "trees")
+    [
+      hide-turtle
+    ]
+    
+    ;; optical gimmick
+    if (distribute_trees)
+    [
+      set xcor xcor + random-float 1.0 - 0.5
+      set ycor ycor + random-float 1.0 - 0.5
+    ]
+  ]
+end
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; create_initial_beechIV <turtles - beechesIV> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to create_initial_beechIV [crownddIV maxage addarea]
+  let crownremainder crownddIV
+  ;; create bechesIV trees with random crown area until crownddIV is reached
+    while [crownremainder > 0] 
+    [
+      sprout-beechesIV 1 
+      [ 
+        set crownarea (1 + addarea) + random (crownremainder - addarea)
+        set age 90 + random maxage 
+        set d 0
+        set m mIV
+        set crownremainder crownremainder - crownarea
+        
+        if (tree_visualization != "trees")
+        [
+          hide-turtle
+        ]
+        
+        ;; optical gimmick
+        if (distribute_trees)
+        [
+          set xcor xcor + random-float 1.0 - 0.5
+          set ycor ycor + random-float 1.0 - 0.5
+        ]
+      ]
+    ]
+end
+

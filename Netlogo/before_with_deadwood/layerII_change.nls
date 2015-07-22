@@ -1,0 +1,90 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; BEFORE - Beech model
+;; based on: Neuert, C. 1999, Rademacher, C. 2004
+;; author: Jan C. Thiele
+;; contact: jthiele@gwdg.de
+;; date: 04 july 2015
+;;
+;; file: layerII_change.nls
+;; description: function to simulate ageincrement and mortality in lower canopy layer (layer II)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; layerII_change <patches> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to layerII_change
+  ;; save old values
+     set ddII_3 ddII_2
+     set ddII_2 ddII_1
+     set ddII_1 ddII
+    
+  ;; rule 17: random mortality  
+     set ddII ddII * (1.0 - random-float 1.0 * 0.2)
+
+  ;; rule 18: systematic mortality
+     set ddII ddII * (1.0 - mII)
+  
+  ;; rule 19: cut at minimum value
+    if (ddII < 0.025)
+    [
+      set ddII 0.0
+    ]
+
+
+    ;; try to create new beechesIII 
+    if (ddII > 0.0) and (count beechesIII-here < 8)
+    [
+      ;; calculate probability for creation of beechesIII from ddII
+      let w wmax
+      let light (1.0 - (count beechesIII-here / 8.0)) * ((8.0 - sum [crownarea] of beechesIV-here) / 8.0)
+      ifelse (light >= 0.5)
+      [
+        set w wmax * ddII
+      ]
+      [
+        ifelse (lfmax = 0.0)
+        [
+          set w 0.0
+        ]
+        [
+          set w ddII * wmax * (lf / lfmax)
+        ]
+      ]
+      
+      ;; create new beechesIII
+      ;; rule 16
+      if ((ddII > 0.0) and (ddII_1 > 0) and (ddII_2 > 0) and (ddII_3 > 0))
+      [
+        let counter 8 - count beechesIII-here
+        while [count beechesIII-here < 8 and counter > 0]  
+        [
+          set counter counter - 1
+          ;; rule 23
+          if (random-float 1.0 < w)
+          [
+            sprout-beechesIII 1 
+            [ 
+              set age 60 + random 61
+              set dmin minDIII
+              set d 0
+              
+              if (tree_visualization != "trees")
+              [
+                hide-turtle
+              ]
+              
+              ;; optical playaround
+              if (distribute_trees)
+              [
+                set xcor xcor + random-float 1.0 - 0.5
+                set ycor ycor + random-float 1.0 - 0.5
+              ]
+            ] 
+          ]
+        ]
+      ] 
+    ]
+end
+
+

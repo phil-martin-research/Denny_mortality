@@ -1,0 +1,72 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; BEFORE - Beech model
+;; based on: Neuert, C. 1999, Rademacher, C. 2004
+;; author: Jan C. Thiele
+;; contact: jthiele@gwdg.de
+;; date: 04 july 2015
+;;
+;; file: light_interaction.nls
+;; description: function to calculate the neighborhood interaction due to light
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; light_interaction <patch> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to light_interaction
+          
+   ;; effect of gaps in layer IV and III on the mortality rate
+     ; calculate sum of crownarea in layer IV
+     let sumIV sum [crownarea] of beechesIV-here
+     
+     ; rule 69/71: lightfactor of patch itself
+     ; gaps in layer IV * lightfactorIV
+     let lfsum 4 * (8 - sumIV) * lIV
+     ; gaps in layer III * lightfactorIII
+     set lfsum lfsum + 4 * (8 - count beechesIII-here) * lIII
+
+     
+   ifelse (switch-off-neighbourhood-interaction-light = false)
+   [
+     ;; rule 64/68/70: effects of gaps in layer IV and III in surrounding cells (s) on the mortality rate of cell x
+     ;;     |s|
+     ;;   |s|x|s|
+     ;;   |s|s|s|
+        let directneighbourcounter 0
+        ask neighbors 
+        [              
+          ;; do for all cells, which are not in north-west (dx: -1, dy +1) or north-east (dx: +1, dy +1)      
+          if not (((pxcor = ([pxcor] of myself) + 1) and (pycor = ([pycor] of myself) + 1)) or ((pxcor = ([pxcor] of myself) - 1) and (pycor = ([pycor] of myself) + 1)))
+          [
+            let sumIVneighbor sum [crownarea] of beechesIV-here
+            ;; lightfactor increment due to gaps in layerIV of neightbour
+            set lfsum lfsum + (8 - sumIVneighbor) * lIV 
+            ;; lightfactor increment due to gaps in layerIII of neightbour
+            set lfsum lfsum + (8 - count beechesIII-here) * lIII 
+            set directneighbourcounter directneighbourcounter + 1
+          ]
+        ]    
+     ;; rule 74: cells outside the forest result in max. reduction of mortality rate (max. number of direct surrounding cells here: 6) 
+        if (directneighbourcounter < 6)
+        [
+          set lfsum lfsum + (6 - directneighbourcounter) * (8 * (lIV + lIII)) 
+        ]
+   ]
+   [     
+     set lfsum lfsum * 2.5      
+   ]
+
+   ;; save lfsum in patch-variable
+      set LF lfsum  
+   
+   ;; max. value of factor is 0.8
+      let factor 0.2
+      if (lfsum <= 0.8)
+      [ set factor 1.0 - lfsum ]
+
+   ;; reduction of layer specific mortality rate
+     ;; mortality rate of IVbeeches depends not on light (upper crown!) (mIV)
+     set mI mImax * factor
+     set mII mIImax * factor
+     set mIII mIIImax * factor
+end

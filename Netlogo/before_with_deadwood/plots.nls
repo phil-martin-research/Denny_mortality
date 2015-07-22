@@ -1,0 +1,953 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; BEFORE - Beech model
+;; based on: Neuert, C. 1999, Rademacher, C. 2004
+;; author: Jan C. Thiele
+;; contact: jthiele@gwdg.de
+;; date: 04 july 2015
+;;
+;; file: plots.nls
+;; description: function to plot results
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ 
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; plots <observer> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to plots
+  plot-winddirection
+  plot-states
+  plot-optimal-percent
+  plot-dominancedegree-per-layer
+  plot-beechIV-age-histogram
+  plot-beechIII-age-histogram
+  plot-beechIV-crownarea-histogram
+  plot-giants
+  plot-volume-deadwood
+  calculate-mean-deadwood
+  plot-state-histogram
+  
+  ifelse (tree_visualization = "pies") 
+  [ plot-beech-circles ]
+  [ 
+    if (tree_visualization = "lines")
+    [ plot-beech-lines ]
+  ]
+end
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; plot-winddirection <observer> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to plot-winddirection
+  set wind_info (word ticks ": " windhere ": " windstrength)
+end
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; plot-beech-circles <observer> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to plot-beech-circles 
+  ask patches [     
+    let lastHeading 0
+    ask beechesiii-here [       
+      set hidden? false set heading lastHeading set lastHeading lastHeading + 45 set shape "biii_1"   
+    ]
+    
+    set lastHeading 0
+    ask beechesiv-here [       
+      set hidden? false set heading lastHeading set lastHeading lastHeading + 45 * crownarea set shape (word "biv_" crownarea)
+
+;      if crownarea = 1 [ set hidden? false set heading lastHeading set lastHeading lastHeading + 45 set shape "biv_1"]
+;      if crownarea = 2 [ set hidden? false set heading lastHeading set lastHeading lastHeading + 90  set shape "biv_2"]
+;      if crownarea = 3 [ set hidden? false set heading lastHeading set lastHeading lastHeading + 135  set shape "biv_3"]
+;      if crownarea = 4 [ set hidden? false set heading lastHeading set lastHeading lastHeading + 180  set shape "biv_4"]
+;      if crownarea = 5 [ set hidden? false set heading lastHeading set lastHeading lastHeading + 225  set shape "biv_5"]
+;      if crownarea = 6 [ set hidden? false set heading lastHeading set lastHeading lastHeading + 270  set shape "biv_6"]
+;      if crownarea = 7 [ set hidden? false set heading lastHeading set lastHeading lastHeading + 315  set shape "biv_7"]
+;      if crownarea = 8 [ set hidden? false set heading lastHeading set lastHeading lastHeading + 360  set shape "biv_8"]      
+      set size 0.8
+    ]  
+  
+  ]  
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; plot-beech-lines <observer> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to plot-beech-lines
+  ask ddlines [die]
+  ask patches [ 
+    sprout-ddlines 1 [ set color 1 set heading 0 set shape "dd100" set size [ddI] of patch-here - 0.1 set ycor pycor - 0.3]
+    sprout-ddlines 1 [ set color 3 set heading 0 set shape "dd100" set size [ddII] of patch-here - 0.1 set ycor pycor - 0.1]
+    sprout-ddlines 1 [ set color 5 set heading 0 set shape "dd100" set size (count beechesIII-here) * 0.125 - 0.1 set ycor pycor + 0.1 set xcor pxcor ]
+    sprout-ddlines 1 [ set color 7 set heading 0 set shape "dd100" set size (sum [crownarea] of beechesIV-here) * 0.125 - 0.1 set ycor pycor + 0.3 set xcor pxcor ]
+  ]
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; plot-states <observer> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to plot-states
+  let state1count 0
+  let state1neighborcount 0
+  let state2count 0
+  let state2neighborcount 0
+  let state3count 0
+  let state3neighborcount 0
+  let patchcount count boundarylist ;patches
+  ask boundarylist [ ;patches [ 
+                if (state = 1) [ set state1count state1count + 1]
+                if (stateneighbour = 1) [ set state1neighborcount state1neighborcount + 1]
+                if (state = 2) [ set state2count state2count + 1]
+                if (stateneighbour = 2) [ set state2neighborcount state2neighborcount + 1]
+                if (state = 3) [ set state3count state3count + 1]
+                if (stateneighbour = 3) [ set state3neighborcount state3neighborcount + 1]
+              ]
+  set-current-plot "percentage of states (w/wo neighbourhood filter)"
+  set-current-plot-pen "state1"
+  plot state1count / patchcount * 100
+  set-current-plot-pen "state2"
+  plot state2count / patchcount * 100
+  set-current-plot-pen "state3"
+  plot state3count / patchcount * 100
+  set-current-plot-pen "state1neighbour"
+  plot state1neighborcount / patchcount * 100
+  set-current-plot-pen "state2neighbour"
+  plot state2neighborcount / patchcount * 100
+  set-current-plot-pen "state3neighbour"
+  plot state3neighborcount / patchcount * 100
+
+ 
+  set growupcount_list fput (state1count / patchcount * 100) growupcount_list
+  set optimalcount_list fput (state2count / patchcount * 100) optimalcount_list
+  set decaycount_list fput (state3count / patchcount * 100) decaycount_list
+  
+  set meangrowuppercent mean growupcount_list
+  set meanoptimalpercent mean optimalcount_list
+  set meandecaypercent mean decaycount_list
+
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; plot-optimal-percent <observer> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to plot-optimal-percent
+  let state2count 0
+  let state2neighborcount 0
+  ask boundarylist [ ;patches [ 
+                if (state = 2) [ set state2count state2count + 1]
+                if (stateneighbour = 2) [ set state2neighborcount state2neighborcount + 1]
+                
+              ]
+  set-current-plot "percent optimal state"
+  set-current-plot-pen "state2perc"
+  plot state2count / count boundarylist * 100
+  set-current-plot-pen "state2neighborperc"
+  plot state2neighborcount / count boundarylist * 100 ;patches * 100
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; plot-dominancedegree-per-layer <observer> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to plot-dominancedegree-per-layer
+  let ddIsum (sum [ddI] of boundarylist) * 100
+  let ddIIsum (sum [ddII] of boundarylist) * 100
+    
+  let ddIIIsum (sum [count beechesIII-here] of boundarylist) * 12.5
+  
+  let ddIVsum (sum [sum [crownarea] of beechesIV-here] of boundarylist) * 12.5
+            
+  set-current-plot "percent dominance degree"
+  set-current-plot-pen "ddIperc"
+  plot ddIsum / count boundarylist ;patches 
+  
+  set-current-plot-pen "ddIIperc"
+  plot ddIIsum / count boundarylist ;patches 
+  
+  set-current-plot-pen "ddIIIperc"
+  plot ddIIIsum / count boundarylist ;patches 
+  
+  set-current-plot-pen "ddIVperc"
+  plot ddIVsum / count boundarylist ;patches 
+  
+  ifelse (windstrength = item 1 last pwindstrength )
+  [
+    set-current-plot-pen "strongwind"
+    plot-pen-down
+    plotxy ticks 30
+    plot-pen-up
+  ]
+  [
+    if (windstrength = item 1 item 1 pwindstrength)
+    [
+      set-current-plot-pen "middlewind"
+      plot-pen-down
+      plotxy ticks 10
+      plot-pen-up
+    ]
+  ]
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; plot-beechIV-age-histogram <observer> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to plot-beechIV-age-histogram
+ set-current-plot "beechesIV age histogram (without boundary)"
+ histogram [age] of beechesIV-on boundarylist
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; plot-beechIII-age-histogram <observer> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to plot-beechIII-age-histogram
+ set-current-plot "beechesIII age histogram (without boundary)"
+ histogram [age] of beechesIII-on boundarylist
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; plot-beechIV-crownarea-histogram <observer> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to plot-beechIV-crownarea-histogram
+ set-current-plot "beechesIV crownarea histogram (without boundary)"
+ histogram [crownarea] of beechesIV-on boundarylist
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; plot-giants <observer> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to plot-giants
+
+  let agegiants (beechesIV-on boundarylist) with [age >= agemax]  
+  let sizegiants (beechesIV-on  boundarylist) with [crownarea = 8]
+  let ageorsizegiants (beechesIV-on boundarylist) with [(age >= agemax) or (crownarea = 8)] 
+  let ageandsizegiants (beechesIV-on boundarylist) with [(age >= agemax) and (crownarea = 8)] 
+
+  
+  ;let sumagegiants sum [count beechesIV-here with [age >= agemax]] of boundarylist
+  ;let sumsizegiants sum [count beechesIV-here with [crownarea = 8]] of boundarylist
+  ;let sumageorsizegiants sum [count beechesIV-here with [(age >= agemax) or (crownarea = 8)]] of boundarylist
+  ;let sumageandsizegiants sum [count beechesIV-here with [(age >= agemax) and (crownarea = 8)]] of boundarylist
+  
+  set-current-plot "number of giants"
+  set-current-plot-pen "size"
+  plot count sizegiants
+  set-current-plot-pen "age"
+  plot count agegiants
+  set-current-plot-pen "age or size"
+  plot count ageorsizegiants
+  set-current-plot-pen "age and size"
+  plot count ageandsizegiants
+  
+  
+  ;; calculate clark and evans index for giants
+  let meandistage 0.0
+  let meandistsize 0.0
+  let meandistageorsize 0.0
+  let meandistageandsize 0.0
+  let area count boundarylist
+  
+        
+  if (count agegiants > 1)
+  [
+    ask agegiants
+    [
+      set meandistage meandistage + distance min-one-of agegiants with [who != [who] of myself] [distance myself]
+    ]
+  
+    let Nage count agegiants
+    
+    let r_beobage meandistage / Nage     
+    let r_expectedage 1.0 / (2.0 * sqrt ( Nage /  area))
+    let Rage r_beobage / r_expectedage
+
+    ;show (word "Rage: " Rage)
+    set-current-plot "mean min. distance of giants"
+    set-current-plot-pen "age"
+    plotxy ticks r_beobage
+  ]
+
+  if (count sizegiants > 1)
+  [
+    ask sizegiants
+    [
+      set meandistsize meandistsize + distance min-one-of sizegiants with [who != [who] of myself] [distance myself]
+    ]
+  
+    let Nsize count sizegiants
+    let r_beobsize meandistsize / Nsize     
+    let r_expectedsize 1.0 / (2.0 * sqrt ( Nsize /  area))
+    let Rsize r_beobsize / r_expectedsize
+
+    ;show (word "Rsize: " Rsize)
+    set-current-plot "mean min. distance of giants"
+    set-current-plot-pen "size"
+    plotxy ticks r_beobsize
+  ]
+  
+  if (count ageorsizegiants > 1)
+  [
+    ask ageorsizegiants
+    [
+      set meandistageorsize meandistageorsize + distance min-one-of ageorsizegiants with [who != [who] of myself] [distance myself]
+    ]
+  
+    let Nageorsize count ageorsizegiants
+    let r_beobageorsize meandistageorsize / Nageorsize    
+    let r_expectedageorsize 1.0 / (2.0 * sqrt ( Nageorsize /  area))
+    let Rageorsize r_beobageorsize / r_expectedageorsize
+
+    ;show (word "Rageorsize: " Rageorsize)
+    set-current-plot "mean min. distance of giants"
+    set-current-plot-pen "age or size"
+    plotxy ticks r_beobageorsize    
+  ]
+  
+  if (count ageandsizegiants > 1)
+  [
+    ask ageandsizegiants
+    [
+      set meandistageandsize meandistageandsize + distance min-one-of ageandsizegiants with [who != [who] of myself] [distance myself]
+    ]
+  
+    let Nageandsize count ageandsizegiants
+    let r_beobageandsize meandistageandsize / Nageandsize    
+    let r_expectedageandsize 1.0 / (2.0 * sqrt ( Nageandsize /  area))
+    let Rageandsize r_beobageandsize / r_expectedageandsize
+
+    ;show (word "Rageandsize: " Rageandsize)
+    set-current-plot "mean min. distance of giants"
+    set-current-plot-pen "age and size"
+    plotxy ticks r_beobageandsize    
+  ]  
+  
+  ;; calculate G-function for giants
+  g-function agegiants "g0.8 of giants" "age" "age_interpol"
+  g-function sizegiants "g0.8 of giants" "size" "size_interpol"
+    
+end
+
+
+
+
+to g-function [agentset plotname penname1 penname2]
+  if (count agentset > 1)
+  [
+    let distlist []
+
+    ask agentset
+    [
+      let dist distance min-one-of agentset with [who != [who] of myself] [distance myself]
+      set distlist fput dist distlist
+    ]
+
+    ;set-current-plot "g-function"
+    ;clear-plot
+    
+    ;; sort list by ascending distances:
+    let sortdist sort distlist
+  
+    ;; create list with steps used for calculting g (only once)
+    let steps []
+    let last_ 20
+    repeat 25
+    [
+      set steps lput (last_ / 100) steps  
+      set last_ last_ + 20 
+    ]
+    
+    ;; calculate g for every step and fill into graph
+    foreach steps
+    [
+      let step ?
+      let counter 0
+      ;; count number of neighbors within distance
+      foreach sortdist
+      [
+        if (? <= step)
+        [
+          set counter counter + 1        
+        ]
+       
+      ]
+      ;; proporting to all points
+      let g counter / (length sortdist)
+  
+      ;plotxy step g
+    ]
+    
+    ;; calculate 0.8 per cent
+    let percent 0.8
+    let schwelle floor(percent * length sortdist)
+    
+    let g_08 item (schwelle - 1) sortdist
+    ;print (word "g_08: " g_08)
+    set-current-plot plotname
+    set-current-plot-pen penname1
+    plotxy ticks g_08
+        
+    ;; with interpolation
+    let N length sortdist
+    set schwelle (percent * N)
+    let schwelle_floor floor(schwelle)
+    let schwelle_rest schwelle - schwelle_floor
+    
+    
+    let value_1 item (schwelle_floor - 1) sortdist
+    let value_2 item (schwelle_floor) sortdist
+    let diff value_2 - value_1
+    let schwelle_perc schwelle_floor / N
+    let schwelle_up_perc (schwelle_floor + 1) / N  
+    let g_08interpol value_1 + (diff / ( schwelle_up_perc - schwelle_perc)) * (percent - schwelle_perc)
+    set-current-plot plotname
+    set-current-plot-pen penname2
+    plotxy ticks g_08interpol
+    ;show (word "g_08interpol: " g_08interpol)  
+  ]
+
+end
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; plot-volume-deadwood <observer> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to plot-volume-deadwood
+  set-current-plot "volume of deadwood"
+
+  let ldeads-boundary ldeads-on boundarylist
+  let sdeads-boundary sdeads-on boundarylist
+  
+  set-current-plot-pen "lying_IIIbeech"
+  plot sum [vol] of ldeads-boundary with [IVbeech? = false]
+
+  set-current-plot-pen "standing_IIIbeech"
+  plot sum [vol] of sdeads-boundary with [IVbeech? = false]
+ 
+  set-current-plot-pen "lying_IVbeech"
+  plot sum [vol] of ldeads-boundary with [IVbeech? = true]
+
+  set-current-plot-pen "standing_IVbeech"   
+  plot sum [vol] of sdeads-boundary with [IVbeech? = true]
+
+end
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; calculate-mean-deadwood <observer> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to calculate-mean-deadwood
+  if (ticks >= 150)
+  [
+    set sdeadcount_list fput (count sdeads) sdeadcount_list
+    set ldeadcount_list fput (count ldeads) ldeadcount_list
+ 
+    set sdeadvol_list fput (sum [vol] of sdeads) sdeadvol_list
+    set ldeadvol_list fput (sum [vol] of ldeads) ldeadvol_list
+      
+    set meansdeadcount floor (mean sdeadcount_list)
+    set meanldeadcount floor (mean ldeadcount_list)
+
+    set meansdeadvol floor (mean sdeadvol_list)
+    set meanldeadvol floor (mean ldeadvol_list)
+  ]
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; plot-state-histogram <observer> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to plot-state-histogram
+  set-current-plot "state histogram"
+  ;set-histogram-num-bars 3
+  histogram [state] of boundarylist ;patches
+  ;histogram [stateneighbor] of boundarylist ;patches
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; show-layerI <observer> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to reset_display
+  ask ddlines [ die ]
+  ask beechesIV [ hide-turtle ]
+  ask beechesIII [ hide-turtle ]
+  ask ldeads [ hide-turtle ]
+  ask sdeads [ hide-turtle ]
+  
+  
+  ifelse (tree_visualization = "pies") 
+  [ 
+    ask beechesIV [ show-turtle ]
+    ask beechesIII [ show-turtle ]
+    plot-beech-circles 
+  ]
+  [ 
+    ifelse (tree_visualization = "lines")
+    [ 
+      plot-beech-lines 
+    ]
+    [
+      if (tree_visualization = "trees")
+      [
+        ask beechesIV 
+        [
+          set shape "beechIV"
+          set hidden? false
+        ]
+        ask beechesIII
+        [
+          set shape "beechIII"
+          set hidden? false
+        ]
+        ask ldeads [ show-turtle ]
+        ask sdeads [ show-turtle ]
+      ]
+    ]
+  ]   
+  ;ask boundarylist ;patches 
+  ;[ set pcolor green ]
+  colorize_patch_stateneighbour  
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; show-layerI <observer> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to show_layerI
+  ask ddlines [ die ]
+  ask beechesIV [ hide-turtle ]
+  ask beechesIII [ hide-turtle ]
+  ask boundarylist [ ;patches [
+                ifelse (ddI > 0.75)
+                [
+                  set pcolor 68 
+                ]
+                [
+                  ifelse (ddI > 0.5)
+                  [
+                    set pcolor 66
+                  ]
+                  [
+                    ifelse (ddI > 0.25)
+                    [
+                      set pcolor 64
+                    ]
+                    [
+                      set pcolor 62
+                    ]
+                  ]
+                ] 
+              ]
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; show-layerII <observer> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to show_layerII
+  ask ddlines [ die ]
+  ask beechesIV [ hide-turtle ]
+  ask beechesIII [ hide-turtle ]
+  ask boundarylist [ ;patches [
+                ifelse (ddII > 0.75)
+                [
+                  set pcolor 68 
+                ]
+                [
+                  ifelse (ddII > 0.5)
+                  [
+                    set pcolor 66
+                  ]
+                  [
+                    ifelse (ddII > 0.25)
+                    [
+                      set pcolor 64
+                    ]
+                    [
+                      set pcolor 62
+                    ]
+                  ]
+                ] 
+              ]
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; show-layerIII <observer> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to show_layerIII
+  ask ddlines [ die ]
+  ask beechesIV [ hide-turtle ]
+  ask beechesIII [ hide-turtle ]
+  ask boundarylist [ ;patches [
+                let ddIII count beechesIII-here * 0.125
+                ifelse (ddIII > 0.75)
+                [
+                  set pcolor 68 
+                ]
+                [
+                  ifelse (ddIII > 0.5)
+                  [
+                    set pcolor 66
+                  ]
+                  [
+                    ifelse (ddIII > 0.25)
+                    [
+                      set pcolor 64
+                    ]
+                    [
+                      set pcolor 62
+                    ]
+                  ]
+                ] 
+              ]
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; show-layerIV <observer> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to show_layerIV
+  ask ddlines [ die ]
+  ask beechesIV [ hide-turtle ]
+  ask beechesIII [ hide-turtle ]
+  ask boundarylist [ ;patches [
+                let ddIV sum [crownarea] of beechesIV-here * 0.125
+                ifelse (ddIV > 0.75)
+                [
+                  set pcolor 68 
+                ]
+                [
+                  ifelse (ddIV > 0.5)
+                  [
+                    set pcolor 66
+                  ]
+                  [
+                    ifelse (ddIV > 0.25)
+                    [
+                      set pcolor 64
+                    ]
+                    [
+                      set pcolor 62
+                    ]
+                  ]
+                ] 
+              ]
+end
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; show-subplot <observer> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to show-subplot
+  clear-output
+  
+  output-print " "
+  output-type "   neighbourhood analysis for patch " output-type subpatch-xcor output-type " " output-type subpatch-ycor output-print ": "
+  output-print "  --------------------------------------------- "
+  output-print " "
+  
+  output-print "   dominance degree layer I: "
+  output-print "  --------------------------- "
+  output-print " "
+  
+  fill-output-with-subplot-ddI
+
+  output-print " "
+  output-print "   dominance degree layer II: "
+  output-print "  --------------------------- "
+  output-print " "
+  
+  fill-output-with-subplot-ddII
+  
+  output-print " "
+  output-print "   dominance degree count beechIII: "
+  output-print "  --------------------------------- "
+  output-print " "
+  
+  fill-output-with-subplot-countIII
+
+  output-print " "
+  output-print "   dominance degree count beechIV: "
+  output-print "  --------------------------------- "
+  output-print " "
+  
+  fill-output-with-subplot-countIV  
+  
+  output-print " "
+  output-print "   dominance degree crownarea beechIV: "
+  output-print "  ------------------------------------- "
+  output-print " "
+  
+  fill-output-with-subplot-crownareaIV
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; fill-output-with-subplot-ddI <observer> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to fill-output-with-subplot-ddI 
+  ask patch subpatch-xcor subpatch-ycor [
+                  set pcolor white
+                  output-type "    | "
+                  ifelse (is-patch? patch-at -1 1) 
+                  [ output-type precision [ddI] of patch-at -1 1 3]
+                  [ output-type "--" ]                
+                  output-type " | "
+                  ifelse (is-patch? patch-at 0 1) 
+                  [ output-type precision [ddI] of patch-at 0 1 3]
+                  [ output-type "--" ]
+                  output-type " | "
+                  ifelse (is-patch? patch-at 1 1) 
+                  [ output-type precision [ddI] of patch-at 1 1 3]
+                  [ output-type "--" ]
+                  output-print " |"
+                  output-type "    | "
+                  ifelse (is-patch? patch-at -1 0) 
+                  [ output-type precision [ddI] of patch-at -1 0 3]
+                  [ output-type "--" ]
+                  output-type " | "
+                  output-type precision ddI 3
+                  output-type " | "
+                  ifelse (is-patch? patch-at 1 0) 
+                  [ output-type precision [ddI] of patch-at 1 0 3]
+                  [ output-type "--" ]
+                  output-print " |"
+                  output-type "    | "
+                  ifelse (is-patch? patch-at -1 -1) 
+                  [ output-type precision [ddI] of patch-at -1 -1 3]
+                  [ output-type "--" ]
+                  output-type " | "
+                  ifelse (is-patch? patch-at 0 -1) 
+                  [ output-type precision [ddI] of patch-at 0 -1 3]
+                  [ output-type "--" ]
+                  output-type " | "
+                  ifelse (is-patch? patch-at 1 -1) 
+                  [ output-type precision [ddI] of patch-at 1 -1 3]
+                  [ output-type "--" ]
+                  output-print " |"
+                ]
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; fill-output-with-subplot-ddII <observer> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to fill-output-with-subplot-ddII
+  ask patch subpatch-xcor subpatch-ycor [
+                  set pcolor white
+                  output-type "    | "
+                  ifelse (is-patch? patch-at -1 1) 
+                  [ output-type precision [ddII] of patch-at -1 1 3]
+                  [ output-type "----" ]                
+                  output-type " | "
+                  ifelse (is-patch? patch-at 0 1) 
+                  [ output-type precision [ddII] of patch-at 0 1 3]
+                  [ output-type "----" ]
+                  output-type " | "
+                  ifelse (is-patch? patch-at 1 1) 
+                  [ output-type precision [ddII] of patch-at 1 1 3]
+                  [ output-type "----" ]
+                  output-print " |"
+                  output-type "    | "
+                  ifelse (is-patch? patch-at -1 0) 
+                  [ output-type precision [ddII] of patch-at -1 0 3]
+                  [ output-type "----" ]
+                  output-type " | "
+                  output-type precision ddII 3
+                  output-type " | "
+                  ifelse (is-patch? patch-at 1 0) 
+                  [ output-type precision [ddII] of patch-at 1 0 3]
+                  [ output-type "----" ]
+                  output-print " |"
+                  output-type "    | "
+                  ifelse (is-patch? patch-at -1 -1) 
+                  [ output-type precision [ddII] of patch-at -1 -1 3]
+                  [ output-type "----" ]
+                  output-type " | "
+                  ifelse (is-patch? patch-at 0 -1) 
+                  [ output-type precision [ddII] of patch-at 0 -1 3]
+                  [ output-type "----" ]
+                  output-type " | "
+                  ifelse (is-patch? patch-at 1 -1) 
+                  [ output-type precision [ddII] of patch-at 1 -1 3]
+                  [ output-type "----" ]
+                  output-print " |"
+                ]
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; fill-output-with-subplot-countIII <observer> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to fill-output-with-subplot-countIII
+  ask patch subpatch-xcor subpatch-ycor [
+                  set pcolor white
+                  output-type "    | "
+                  ifelse (is-patch? patch-at -1 1) 
+                  [ output-type  count [beechesIII-here] of patch-at -1 1 ]
+                  [ output-type "----" ]                
+                  output-type " | "
+                  ifelse (is-patch? patch-at 0 1) 
+                  [ output-type count [beechesIII-here] of patch-at 0 1 ]
+                  [ output-type "----" ]
+                  output-type " | "
+                  ifelse (is-patch? patch-at 1 1) 
+                  [ output-type count [beechesIII-here] of patch-at 1 1 ]
+                  [ output-type "----" ]
+                  output-print " |"
+                  output-type "    | "
+                  ifelse (is-patch? patch-at -1 0) 
+                  [ output-type count [beechesIII-here] of patch-at -1 0 ]
+                  [ output-type "----" ]
+                  output-type " | "
+                  output-type count beechesIII-here
+                  output-type " | "
+                  ifelse (is-patch? patch-at 1 0) 
+                  [ output-type count [beechesIII-here] of patch-at 1 0 ]
+                  [ output-type "----" ]
+                  output-print " |"
+                  output-type "    | "
+                  ifelse (is-patch? patch-at -1 -1) 
+                  [ output-type count [beechesIII-here] of patch-at -1 -1 ]
+                  [ output-type "----" ]
+                  output-type " | "
+                  ifelse (is-patch? patch-at 0 -1) 
+                  [ output-type count [beechesIII-here] of patch-at 0 -1 ]
+                  [ output-type "----" ]
+                  output-type " | "
+                  ifelse (is-patch? patch-at 1 -1) 
+                  [ output-type count [beechesIII-here] of patch-at 1 -1 ]
+                  [ output-type "----" ]
+                  output-print " |"
+                ]
+end
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; fill-output-with-subplot-countIV <observer> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to fill-output-with-subplot-countIV
+  ask patch subpatch-xcor subpatch-ycor [
+                  set pcolor white
+                  output-type "    | "
+                  ifelse (is-patch? patch-at -1 1) 
+                  [ output-type  count [beechesIV-here] of patch-at -1 1 ]
+                  [ output-type "----" ]                
+                  output-type " | "
+                  ifelse (is-patch? patch-at 0 1) 
+                  [ output-type count [beechesIV-here] of patch-at 0 1 ]
+                  [ output-type "----" ]
+                  output-type " | "
+                  ifelse (is-patch? patch-at 1 1) 
+                  [ output-type count [beechesIV-here] of patch-at 1 1 ]
+                  [ output-type "----" ]
+                  output-print " |"
+                  output-type "    | "
+                  ifelse (is-patch? patch-at -1 0) 
+                  [ output-type count [beechesIV-here] of patch-at -1 0 ]
+                  [ output-type "----" ]
+                  output-type " | "
+                  output-type count beechesIV-here
+                  output-type " | "
+                  ifelse (is-patch? patch-at 1 0) 
+                  [ output-type count [beechesIV-here] of patch-at 1 0 ]
+                  [ output-type "----" ]
+                  output-print " |"
+                  output-type "    | "
+                  ifelse (is-patch? patch-at -1 -1) 
+                  [ output-type count [beechesIV-here] of patch-at -1 -1 ]
+                  [ output-type "----" ]
+                  output-type " | "
+                  ifelse (is-patch? patch-at 0 -1) 
+                  [ output-type count [beechesIV-here] of patch-at 0 -1 ]
+                  [ output-type "----" ]
+                  output-type " | "
+                  ifelse (is-patch? patch-at 1 -1) 
+                  [ output-type count [beechesIV-here] of patch-at 1 -1 ]
+                  [ output-type "----" ]
+                  output-print " |"
+                ]
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; fill-output-with-subplot-countIV <observer> ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to fill-output-with-subplot-crownareaIV
+  ask patch subpatch-xcor subpatch-ycor [
+                  set pcolor white
+                  output-type "    | "
+                  ifelse (is-patch? patch-at -1 1) 
+                  [ output-type  sum [crownarea] of [beechesIV-here] of patch-at -1 1 ]
+                  [ output-type "----" ]                
+                  output-type " | "
+                  ifelse (is-patch? patch-at 0 1) 
+                  [ output-type sum [crownarea] of [beechesIV-here] of patch-at 0 1 ]
+                  [ output-type "----" ]
+                  output-type " | "
+                  ifelse (is-patch? patch-at 1 1) 
+                  [ output-type sum [crownarea] of [beechesIV-here] of patch-at 1 1 ]
+                  [ output-type "----" ]
+                  output-print " |"
+                  output-type "    | "
+                  ifelse (is-patch? patch-at -1 0) 
+                  [ output-type sum [crownarea] of [beechesIV-here] of patch-at -1 0 ]
+                  [ output-type "----" ]
+                  output-type " | "
+                  output-type sum [crownarea] of beechesIV-here
+                  output-type " | "
+                  ifelse (is-patch? patch-at 1 0) 
+                  [ output-type sum [crownarea] of [beechesIV-here] of patch-at 1 0 ]
+                  [ output-type "----" ]
+                  output-print " |"
+                  output-type "    | "
+                  ifelse (is-patch? patch-at -1 -1) 
+                  [ output-type sum [crownarea] of [beechesIV-here] of patch-at -1 -1 ]
+                  [ output-type "----" ]
+                  output-type " | "
+                  ifelse (is-patch? patch-at 0 -1) 
+                  [ output-type sum [crownarea] of [beechesIV-here] of patch-at 0 -1 ]
+                  [ output-type "----" ]
+                  output-type " | "
+                  ifelse (is-patch? patch-at 1 -1) 
+                  [ output-type sum [crownarea] of [beechesIV-here] of patch-at 1 -1 ]
+                  [ output-type "----" ]
+                  output-print " |"
+                ]
+end
+

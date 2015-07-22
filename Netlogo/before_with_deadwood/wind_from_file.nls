@@ -1,0 +1,64 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; BEFORE - Beech model
+;; based on: Neuert, C. 1999, Rademacher, C. 2004
+;; author: Jan C. Thiele
+;; contact: jthiele@gwdg.de
+;; date: 04 july 2015
+;;
+;; file: wind_from_file.nls
+;; description: load wind values from file
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ 
+ globals [
+  ;; two new globals for wind-file handling
+  ;; list of winddirections (one direction per tick)
+  windherelist
+  ;; list of windstrengths (one strength per tick)
+  windstrengthlist
+]
+
+
+
+to load_wind_list_from_file
+  ;; XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+  ;; do at setup
+  ;; XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+  set windherelist []
+  set windstrengthlist [] 
+       
+  ;; load file
+     file-open wind_file_name ;"test.wind" ;; get name from interface
+     
+  while [not file-at-end?]
+  [
+    ;; set windhere list from file
+       set windherelist lput file-read windherelist
+  
+    ;; set windstrength list from file
+       set windstrengthlist lput file-read windstrengthlist
+  ] 
+    
+  ;; close file
+     file-close
+end
+
+to get_wind_from_list
+  ;; XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+  ;; do in every time step
+  ;; XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+  
+  ;; reset wd (relative shift in x- and y-coordinate [dx ,dy])
+     set wd []
+  
+  ;; reset windhere
+     set windhere ""  
+
+  ;; set windhere from list
+     set windhere (item ticks windherelist)
+  
+  ;; set wd from winddir 
+     set wd (item (position windhere winddir) wd_xy)
+   
+  ;; set windstrength from list
+     set windstrength (item ticks windstrengthlist)
+end
