@@ -1,0 +1,61 @@
+Site,Plot,SBA,Canopy Openness Total,IlexSaplings,FagusSaplings,BetulaSaplings,IlexSeedlings,FagusSeedlings,QuerSeedlings,TaxusSeedlings,Other seedlings,TotSeedlings
+BlackBush,1 - Intact,63.2,3.25,26,0,0,165,2,0,0,0,2
+BlackBush,2 - Slight,47.73,9.23,0,0,0,154,0,0,0,0,0
+BlackBush,3 - Moderate,33.67,22.555,0,0,0,141,0,1,0,0,1
+BlackBush,4 - Major,18.1,32.955,4,0,0,66,0,0,0,0,0
+BlackBush,5 - Total,0,68.25,0,0,0,137,3,1,0,1,5
+Bramshaw,1 - Intact,62.49,4.056,2,0,0,0,0,0,0,0,0
+Bramshaw,2 - Slight,48.25,8.528,22,1,0,4,0,0,0,0,0
+Bramshaw,3 - Moderate,30.58,26.988,36,0,0,5,0,0,0,0,0
+Bramshaw,4 - Major,18.07,61.88,90,0,0,122,2,2,0,0,4
+Bramshaw,5 - Total,0,81.744,53,0,0,20,0,2,0,6,8
+Brinken,1 - Intact,62.28,7.842,1,0,0,12,0,0,0,0,0
+Brinken,2 - Slight,47.91,13.468,0,0,0,17,0,1,0,0,1
+Brinken,3 - Moderate,32,47.216,10,4,1,121,16,0,0,4,20
+Brinken,4 - Major,16.87,52.208,0,0,0,30,0,0,0,1,1
+Brinken,5 - Total,0,81.224,0,0,0,1,0,0,0,0,0
+Brockis Hill,1 - Intact,66.25,1.95,49,0,0,148,0,0,0,0,0
+Brockis Hill,2 - Slight,49.09,8.424,65,0,0,147,2,0,0,0,2
+Brockis Hill,3 - Moderate,33.72,15.6,0,0,0,766,0,0,0,0,0
+Brockis Hill,4 - Major,18.24,32.656,20,0,0,283,0,0,0,0,0
+Brockis Hill,5 - Total,0,59.41,76,0,0,105,5,0,0,0,5
+DennyWood,1 - Intact,61.76,1.612,0,1,0,1,0,0,0,0,0
+DennyWood,2 - Slight,49.87,6.812,1,0,0,0,0,0,0,0,0
+DennyWood,3 - Moderate,35.28,31.668,0,0,0,26,0,0,0,0,0
+DennyWood,4 - Major,17.35,60.814,0,0,0,8,0,0,0,0,0
+DennyWood,5 - Total,0,73.32,0,0,0,18,0,1,0,5,6
+Eyeworth,1 - Intact,64.33,2.145,0,0,0,12,0,0,0,0,0
+Eyeworth,2 - Slight,51.52,21.58,0,0,0,22,2,0,1,1,4
+Eyeworth,3 - Moderate,35.09,38.025,0,0,0,25,1,0,0,0,1
+Eyeworth,4 - Major,16.15,55.9,0,0,0,196,23,2,0,6,31
+Eyeworth,5 - Total,0,90.09,11,0,0,45,6,0,0,3,9
+JamesHill,1 - Intact,61.16,2.08,24,0,0,20,0,0,0,0,0
+JamesHill,2 - Slight,49.6,10.036,24,0,0,160,0,0,0,0,0
+JamesHill,3 - Moderate,32.23,16.64,22,0,0,221,0,0,0,0,0
+JamesHill,4 - Major,18.09,35.568,40,0,0,95,1,0,0,0,1
+JamesHill,5 - Total,0,60.294,9,0,0,64,2,0,0,2,4
+Malwood,1 - Intact,65.02,5.616,14,0,0,5,0,0,0,0,0
+Malwood,2 - Slight,49.88,13.104,20,3,1,113,0,0,0,0,0
+Malwood,3 - Moderate,33.19,28.912,3,0,0,150,10,2,0,3,15
+Malwood,4 - Major,17.11,46.488,4,0,0,86,0,1,0,4,5
+Malwood,5 - Total,0,70.252,34,0,0,178,29,0,0,29,58
+MarkAsh,1 - Intact,66.16,1.82,0,0,0,21,1,0,1,1,3
+MarkAsh,2 - Slight,50.86,12.09,3,0,0,101,1,0,0,2,3
+MarkAsh,3 - Moderate,33.19,34.008,0,0,0,14,3,0,0,1,4
+MarkAsh,4 - Major,17.8,56.875,0,0,0,4,7,0,0,4,11
+MarkAsh,5 - Total,0,81.12,0,0,0,1,2,0,0,0,2
+Ridley,1 - Intact,66.12,1.365,0,0,0,50,0,0,0,0,0
+Ridley,2 - Slight,50.07,12.22,0,0,0,163,43,1,0,6,50
+Ridley,3 - Moderate,32.58,26.715,1,0,0,406,2,3,0,0,5
+Ridley,4 - Major,13.65,47.06,1,0,0,28,4,13,0,4,21
+Ridley,5 - Total,0,79.69,1,0,0,169,8,3,0,1,12
+Shave Wood,1 - Intact,59.85,2.184,34,0,0,87,0,0,0,0,0
+Shave Wood,2 - Slight,49.6,7.696,40,6,0,116,0,0,1,0,1
+Shave Wood,3 - Moderate,31.75,25.324,19,0,0,269,15,3,0,2,20
+Shave Wood,4 - Major,18.53,41.756,17,0,0,254,69,0,0,3,72
+Shave Wood,5 - Total,0,63.752,17,0,0,78,2,0,0,1,3
+WoodCrates,1 - Intact,98.39,1.742,8,0,0,19,1,0,0,0,1
+WoodCrates,2 - Slight,52.12,11.25,10,0,0,28,2,0,1,0,3
+WoodCrates,3 - Moderate,37.12,23.79,7,0,0,65,7,0,0,0,7
+WoodCrates,4 - Major,19.44,42.445,7,1,0,141,2,0,0,2,4
+WoodCrates,5 - Total,0,52.572,7,0,0,105,8,1,0,4,13
