@@ -30,6 +30,9 @@ Dead_F<-subset(Dead,Species=="F")
 keeps<-c("ID2","Block","Dead","Easting","Northing","SL","Species","GR","BAGR","relGR","relBAGR","DBH2","BA2","relSize","Dead_dist","Dead_No","Clay","Silt","Sand")
 Dead_F<-Dead_F[keeps]
 
+mean(Dead_F$GR)
+sd(Dead_F$GR)
+
 #standardise variables following Zuur et al recommendations
 head(Dead_F)
 Dead_F_st<-cbind(Dead_F[,1:7],apply(X=Dead_F[,8:ncol(Dead_F)],MARGIN=2,FUN=function(x) {(x-mean(x))/sd(x)}))
@@ -103,6 +106,12 @@ M4<-glmer(Dead~DBH2+GR+Sand+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial
 M5<-glmer(Dead~GR+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
 M6<-glmer(Dead~GR+Dead_dist+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
 M7<-glmer(Dead~GR+Dead_dist+Sand+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
+
+M4<-glmer(Dead~DBH2+Dead_dist+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
+summary(M4)
+
+
+
 
 Dead<-Dead_F_st$Dead
 DBH2<-Dead_F_st$DBH2
