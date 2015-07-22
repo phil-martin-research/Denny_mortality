@@ -37,6 +37,8 @@ Model_sel$R2<-c(r.squaredGLMM(MDens1)[1],r.squaredGLMM(MDens2)[1],r.squaredGLMM(
 write.csv(Model_sel,"Tables/Sapling_model_sel.csv",row.names=F)
 
 #also produce a coefficient table for sapling model
+str(summary(model.avg(Model_sel)))
+
 Model_coefs<-coef(summary(MDens1))
 write.csv(Model_coefs,"Tables/Sapling_model_coefs.csv",row.names=F)
 
