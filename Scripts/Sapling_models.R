@@ -28,7 +28,6 @@ MDens1<-glmer(FS~FM*Year+(1|Block),family="poisson",data=Saplings_st)
 MDens2<-glmer(FS~FM+Year+(1|Block),family="poisson",data=Saplings_st)
 MDens3<-glmer(FS~FM+(1|Block),family="poisson",data=Saplings_st)
 AICc(MDens1,MDens2,MDens3,MDens0)
-
 summary(MDens1)
 
 #produce a model list and selection table
@@ -41,11 +40,6 @@ write.csv(Model_sel,"Tables/Sapling_model_sel.csv",row.names=F)
 Model_coefs<-coef(summary(MDens1))
 write.csv(Model_coefs,"Tables/Sapling_model_coefs.csv",row.names=F)
 
--0.77+(1.03*4)-(0.74*-1)+(0.24*(-1*4))
-
-
-qplot(Saplings_st$FM,predict(MDens1),colour=as.factor(Saplings_st$Year))
-
 
 #now create plots of this
 newdat<-rbind(data.frame(FM=seq(1,max(Saplings$FM),1),Year=1964),
@@ -56,7 +50,6 @@ newdat<-rbind(data.frame(FM=seq(1,max(Saplings$FM),1),Year=1964),
 newdat$FS<-0
 mm <- model.matrix(terms(MDens1),newdat)
 newdat$FS <- predict(MDens1,newdat,re.form=NA)
-## or newdat$distance <- mm %*% fixef(fm1)
 pvar1 <- diag(mm %*% tcrossprod(vcov(MDens1),mm))
 tvar1 <- pvar1+VarCorr(MDens1)$Year[1]  ## must be adapted for more complex models
 tvar1 <- 
