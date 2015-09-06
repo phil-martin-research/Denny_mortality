@@ -30,13 +30,22 @@ Dead_F<-subset(Dead,Species=="F")
 keeps<-c("ID2","Block","Dead","Easting","Northing","SL","Species","GR","BAGR","relGR","relBAGR","DBH2","BA2","relSize","Dead_dist","Dead_No","Clay","Silt","Sand")
 Dead_F<-Dead_F[keeps]
 
-mean(Dead_F$GR)
-sd(Dead_F$GR)
+mean(Dead_F$Dead_dist)
+sd(Dead_F$Dead_dist)
+
+mean(Dead_F$Sand)
+sd(Dead_F$Sand)
 
 #standardise variables following Zuur et al recommendations
 head(Dead_F)
 Dead_F_st<-cbind(Dead_F[,1:7],apply(X=Dead_F[,8:ncol(Dead_F)],MARGIN=2,FUN=function(x) {(x-mean(x))/sd(x)}))
 head(Dead_F_st)
+
+mean(Dead_F_st$Sand)
+sd(Dead_F_st$Sand)
+
+mean(Dead_F_st$Dead_dist)
+sd(Dead_F_st$Sand)
 
 #candidates for growth rate variables
 M0<-glmer(Dead~1+offset(log(SL))+(1|Block),Dead_F,family=binomial(link="cloglog"))        
