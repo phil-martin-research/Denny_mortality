@@ -29,12 +29,12 @@ to setup-turtles ;create initial trees
     set mature-count count trees
     set BA (((tree-size-t1 / 200) ^ 2)  * (3.142)) ;sets intital BA calculated from DBH
     set tree-density count trees in-radius 6.35 ;count number of trees in a radius of 6.35 cells, approximately 40 m^2
-    set local-BA (sum [BA] of trees in-radius 6.35) * 25 ;get BA of trees in a radius of 6.35 cells, approximately 40 m^2
+    set local-BA ((sum [BA] of trees in-radius 6.35) * 25) ;get per ha BA of trees in a radius of 6.35 cells, approximately 40 m^2
     set size 1.5
     setxy random-xcor random-ycor] ;this locates trees in centre of a random patch
   create-juveniles 100 ;creates 100 juveniles
   [set color brown
-    set age random-exponential 5
+    set age random-exponential 1
     set tree_size age * (random-normal 0.05 0.02) ;this determines the size of the seedling based on equations of Collet et al 2001
     set size 0.5
     set tree-density count trees in-radius 6.35;count number of trees in a radius of 6.35 cells, approximately 40 m^2
@@ -55,7 +55,7 @@ end
 
 to reproduce-trees
   ask trees [if (random-float 1 > 0.5) and (age > 20)
-  [hatch-juveniles random-normal 10 2
+  [hatch-juveniles random-normal 100 2
     [set age 0
      set tree_size 0.02
      set color brown
@@ -78,29 +78,26 @@ to grow-trees ;this increases tree size using equations approximately equivalent
     if (age > 100) AND (age < 200) [set tree-size-t2 tree-size-t1 + random-normal 0.3 0.5] ;simulates tree growth for trees >100 years and <200 years of age
     if (age > 200) [set tree-size-t2 tree-size-t1 + random-normal 0.2 0.5] ;simulates tree growth for trees >200 years of age
      set growth-rate tree-size-t2 - tree-size-t1 ;this sets DBH growth rate over 1 year
-     set tree-size-t1 tree-size-t2
+     set tree-size-t1 tree-size-t2 ;set tree size at t2 as tree size at t1 for next tick
      set BA (((tree-size-t1 / 200) ^ 2)  * (3.142)) ;calculates BA from DBH
      set tree-density count trees in-radius 6.35 ;count number of trees in an area equivalent to 20m squared
-     set local-BA (sum [BA] of trees in-radius 6.35) * 25 ;works out the basal area per hectare for each 20m squared area
+     set local-BA ((sum [BA] of trees in-radius 6.35) * 25) ;works out the basal area per hectare for each 20m squared area
+     set mature-count count trees with [tree-size-t1 > 10] 
+     set mature-BA sum [BA] of trees with [tree-size-t1 > 10]
   ] 
 end
 
 to kill-trees
   ask trees[
     ;this determines the survival probability of mature trees based on their size and growth rate - derived from the mortality model in the ms
-    set mature-count count trees with [tree-size-t1 > 10] 
-    set mature-BA sum [BA] of trees with [tree-size-t1 > 10]
     if (random-float 1) > 1 - ((1 - exp(- exp(-5.029532 + (((tree-size-t1 - 33) / 24 )* 0.2) + 
             (((growth-rate - 1.9) / 2.5) * -0.59)) + 0))) [set dead-count dead-count + 1 die]
-  ;this sets maximum number of mature trees, I need to come up with a better empirical estimate of this   
-  if mature-count > 300 [ask n-of (mature-count - 300) trees with [tree-size-t1 > 10] [set pcolor brown die]]
-  ;this sets maximum number of saplings as 275, derived from Putman et al. (1989)
   ] 
-  ask trees [if local-BA > 20 [ask trees in-radius 6.35 with [tree-size-t1 < 15] [die]]] ;change this so that instead it kills of all those smaller trees that cause the BA to be >20m sq
+  ask trees [if local-BA > 10 [ask trees in-radius 6.35 with [tree-size-t1 < 20] [set dead-count dead-count + 1 die]]] ;change this so that instead it kills of all those smaller trees that cause the BA to be >20m sq
 
 ifelse spatial-feedback?
     [ask juveniles [if local-BA < 10 [die]]
-      ask juveniles [if random-float 1 > (1 - juvenile-mortality) [die]]]
+      ask juveniles [if random-float 1 > (1 - 0.95) [die]]]
      [ask juveniles [if random-float 1 > (1 - juvenile-mortality) [die]]]
 end
 
@@ -117,15 +114,16 @@ to grow-juveniles ;simulates seedling growth using equations of Collet et al 200
       set color green
       set size 1.5
       ]
-    set juvenile-count count juveniles 
-    ;if juvenile-count > 600 [ask n-of (juvenile-count - 600) juveniles [die]]
+    
   ] 
 end
 
 to kill-juveniles
+  set juvenile-count count juveniles 
+  if juvenile-count > 1000 [ask n-of (juvenile-count - 1000) juveniles [die]]
   ask juveniles [set tree-density count trees in-radius 6.35]
   ask juveniles[set local-BA (sum [BA] of trees in-radius 6.35) * 25]
-  ask juveniles [if tree-density > 10 [ask min-one-of juveniles in-radius 6.35 [tree_size] [die]]]
+  ask juveniles [if local-BA > 10 [ask min-one-of juveniles in-radius 6.35 [tree_size] [die]]]
  ifelse differential-juvenile-mortality?
     [ask juveniles [if local-BA < 10 [die]]
       ask juveniles [if random-float 1 > (1 - juvenile-mortality) [die]]]
@@ -238,7 +236,7 @@ juvenile-mortality
 juvenile-mortality
 0
 1
-0.5
+0.1
 0.1
 1
 NIL
@@ -290,7 +288,7 @@ n-trees
 n-trees
 0
 600
-115
+130
 1
 1
 NIL
