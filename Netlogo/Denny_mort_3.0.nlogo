@@ -16,7 +16,7 @@ to setup
   setup-patches
   setup-turtles
   reset-ticks
-  ifelse random-float 0.5 < 0.5
+  ifelse random-float 1 <= 0.3
   [set mast-year 1]
   [set mast-year 0]
   set dead-total 0
@@ -43,11 +43,11 @@ to setup-turtles ;create initial trees
     set local-BA ((sum [BA] of trees in-radius 11.28) * 25) ;get per ha BA of trees in a radius of 6.35 cells, approximately 40 m^2
     set size 0.1 * tree-size-t1
     setxy random-xcor random-ycor] ;this locates trees in centre of a random patch
-  create-juveniles 100 ;creates 100 juveniles
+  create-juveniles 1000 ;creates 1000 juveniles
   [set color brown
-    set age random-exponential 10
+    set age random-exponential 5
     set tree_size age * (random-normal 0.05 0.02) ;this determines the size of the seedling based on equations of Collet et al 2001
-    set size 0.02
+    set size 0.5
     set tree-density count trees in-radius 11.28;count number of trees in a radius of 6.35 cells, approximately 40 m^2
     set local-BA (sum [BA] of trees in-radius 11.28) * 25 ;get BA of trees in a radius of 6.35 cells, approximately 40 m^2
     set juvenile-count count juveniles
@@ -59,7 +59,7 @@ to go
    grow-trees
    age-juveniles
    grow-juveniles
-   ifelse random-float 1 < 0.3
+   ifelse random-float 1 <= 0.3
   [set mast-year 1]
   [set mast-year 0]
    reproduce-trees
@@ -71,7 +71,7 @@ to go
 end
 
 to reproduce-trees
-   ask trees [if (mast-year = 1) AND age > 40 [hatch-juveniles random-normal 200 2 ; this simulates masting
+   ask trees [if (mast-year = 1) AND age > 40 [hatch-juveniles random-normal 400 2 ; this simulates masting
     [set age 0
      set tree_size 0.02
      set color brown
@@ -141,13 +141,14 @@ end
 
 to grow-juveniles ;simulates seedling growth using equations of Collet et al 2001
   ask juveniles [
-    ifelse age < 10
-    [set tree_size tree_size + 3]
-    [ let tree_size_1 tree_size + 3
+    ifelse tree_size < 1.3
+    [set tree_size tree_size + 0.095]
+    [ let tree_size_1 1
       set breed trees
       set color green
       set tree-size-t1 tree_size_1
       set size 0.1 * tree-size-t1
+      set age 1
       ]
   ] 
 end
@@ -156,7 +157,6 @@ end
 to kill-juveniles
   set juvenile-count count juveniles
   if juvenile-count > 10000 [ask n-of (juvenile-count - 10000) juveniles with [tree_size < 5] [die]]
-  
   ask juveniles [set tree-density count trees in-radius 11.28]
   ask juveniles[set local-BA (sum [BA] of trees in-radius 11.28) * 25]
   ask patches [
@@ -285,7 +285,7 @@ juvenile-mortality
 juvenile-mortality
 0
 1
-0.75
+0.2
 0.1
 1
 NIL
@@ -351,7 +351,7 @@ mean-tree-age
 mean-tree-age
 0
 200
-80
+90
 1
 1
 NIL
@@ -787,16 +787,24 @@ NetLogo 5.1.0
       <value value="280"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="mean-tree-age">
-      <value value="80"/>
+      <value value="100"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="differential-juvenile-mortality?">
       <value value="true"/>
       <value value="false"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="juvenile-mortality">
-      <value value="0.25"/>
+      <value value="0"/>
+      <value value="0.1"/>
+      <value value="0.2"/>
+      <value value="0.3"/>
+      <value value="0.4"/>
       <value value="0.5"/>
-      <value value="0.75"/>
+      <value value="0.6"/>
+      <value value="0.7"/>
+      <value value="0.8"/>
+      <value value="0.9"/>
+      <value value="1"/>
     </enumeratedValueSet>
   </experiment>
 </experiments>

@@ -43,7 +43,7 @@ to setup-turtles ;create initial trees
     set local-BA ((sum [BA] of trees in-radius 11.28) * 25) ;get per ha BA of trees in a radius of 6.35 cells, approximately 40 m^2
     set size 0.1 * tree-size-t1
     setxy random-xcor random-ycor] ;this locates trees in centre of a random patch
-  create-juveniles 100 ;creates 100 juveniles
+  create-juveniles 0 ;creates 5000 juveniles
   [set color brown
     set age random-exponential 10
     set tree_size age * (random-normal 0.05 0.02) ;this determines the size of the seedling based on equations of Collet et al 2001
@@ -59,7 +59,7 @@ to go
    grow-trees
    age-juveniles
    grow-juveniles
-   ifelse random-float 1 < 0.3
+   ifelse random-float 1 < 0
   [set mast-year 1]
   [set mast-year 0]
    reproduce-trees
@@ -285,7 +285,7 @@ juvenile-mortality
 juvenile-mortality
 0
 1
-0.75
+1
 0.1
 1
 NIL
@@ -351,7 +351,7 @@ mean-tree-age
 mean-tree-age
 0
 200
-80
+90
 1
 1
 NIL
@@ -787,16 +787,24 @@ NetLogo 5.1.0
       <value value="280"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="mean-tree-age">
-      <value value="80"/>
+      <value value="100"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="differential-juvenile-mortality?">
       <value value="true"/>
       <value value="false"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="juvenile-mortality">
-      <value value="0.25"/>
+      <value value="0"/>
+      <value value="0.1"/>
+      <value value="0.2"/>
+      <value value="0.3"/>
+      <value value="0.4"/>
       <value value="0.5"/>
-      <value value="0.75"/>
+      <value value="0.6"/>
+      <value value="0.7"/>
+      <value value="0.8"/>
+      <value value="0.9"/>
+      <value value="1"/>
     </enumeratedValueSet>
   </experiment>
 </experiments>
