@@ -917,7 +917,7 @@ NetLogo 5.1.0
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="Experiment_1" repetitions="3" runMetricsEveryStep="true">
+  <experiment name="Experiment_1" repetitions="20" runMetricsEveryStep="true">
     <setup>setup</setup>
     <go>go</go>
     <timeLimit steps="150"/>

@@ -36,20 +36,20 @@ to setup-turtles ;create initial trees
   [set color green
     set age random-exponential mean-tree-age ;creates trees with ages set in slider
     set tree-size-t1 -1.6 + (35.2 * ln (1 + (0.00061 * (age ^ 1.8)))) ;set tree size as derived from Holzwarth et al. 2013
-    set tree-size-t2 0 ;set tree size at time step 2 as zero (this is used for calculation of growth rates)
-    set mature-count count trees
+    set tree-size-t2 tree-size-t1 ;set tree size at time step 2 as zero (this is used for calculation of growth rates)
+    ;set mature-count count trees
     set BA (((tree-size-t1 / 200) ^ 2)  * (3.142)) ;sets intital BA calculated from DBH
-    set tree-density count trees in-radius 11.28 ;count number of trees in a radius of 6.35 cells, approximately 40 m^2
-    set local-BA ((sum [BA] of trees in-radius 11.28) * 25) ;get per ha BA of trees in a radius of 6.35 cells, approximately 40 m^2
+    set tree-density count trees in-radius 11.28 ;count number of trees in a radius of 11.28 cells, approximately 40 m^2
+    set local-BA ((sum [BA] of trees in-radius 11.28) * 25) ;get per ha BA of trees in a radius of 11.28 cells, approximately 40 m^2
     set size 0.1 * tree-size-t1
     setxy random-xcor random-ycor] ;this locates trees in centre of a random patch
   create-juveniles 20 * n-trees ;creates 20 juveniles for each mature tree
   [set color brown
     set age random-exponential 5 
-    set tree_size age * 0.095 ;this determines the size of the seedling based on equations of Collet et al 2001
+    set tree_size age * 0.095 ;this determines the size of the juvenile tree based on equations of Collet et al 2001
     set size 0.5
-    set tree-density count trees in-radius 11.28;count number of trees in a radius of 6.35 cells, approximately 40 m^2
-    set local-BA (sum [BA] of trees in-radius 11.28) * 25 ;get BA of trees in a radius of 6.35 cells, approximately 40 m^2
+    set tree-density count trees in-radius 11.28;count number of trees in a radius of 11.28 cells, approximately 40 m^2
+    set local-BA (sum [BA] of trees in-radius 11.28) * 25 ;get BA of trees in a radius of 11.28 cells, approximately 40 m^2
     set juvenile-count count juveniles
     setxy random-xcor random-ycor]
 end
@@ -62,11 +62,11 @@ to go
    ifelse random-float 1 <= 0.3
   [set mast-year 1]
   [set mast-year 0]
-   reproduce-trees
    kill-trees
    kill-juveniles
-   age-patches 
-   set dead-total sum[dead-count] of patches 
+   age-patches
+   reproduce-trees 
+   ;set dead-total sum[dead-count] of patches 
    tick
 end
 
@@ -77,7 +77,7 @@ end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 to reproduce-trees
-   ask trees [if (mast-year = 1) AND age > 50 [hatch-juveniles 82  ; this simulates masting, number of seeds produced age of masting based on info from Packham et al. 2012. Number of seeds produced and survival rates also based on Packham et al. 2012
+   ask trees [if (mast-year = 1) AND age > 50 [hatch-juveniles 82 * (1 - juvenile-mortality); this simulates masting, number of seeds produced and age of masting based on Packham et al. 2012. Number of seeds produced and survival rates also based on Packham et al. 2012
     [set age 0
      set tree_size 0
      set color brown
@@ -86,7 +86,7 @@ to reproduce-trees
     set disperse-distance random-exponential 12 ;this sets the dispersal distance at a mean of 12 metres, based on info from Packham et al. 2012
     ifelse not any? trees-on patch-ahead disperse-distance [fd disperse-distance][die];to prevent more than one tree occupying each patch; this equates to intraspecific competition     
   ]]]
-   ask trees [if (mast-year = 0) AND age > 50 [hatch-juveniles random-normal 2 5  ; this simulates masting, number of seeds produced age of masting based on info from Packham et al. 2012. Number of seeds produced and survival rates also based on Packham et al. 2012
+   ask trees [if (mast-year = 0) AND age > 50 [hatch-juveniles random-normal 82 5 * (1 - juvenile-mortality); this simulates masting, number of seeds produced and age of masting based on Packham et al. 2012. Number of seeds produced and survival rates also based on Packham et al. 2012
     [set age 0
      set tree_size 0
      set color brown
@@ -115,14 +115,14 @@ to grow-trees ;this increases tree size using equations approximately equivalent
   ;young trees increase in DBH rapidly and this slows in older trees
   ask trees [
     if age < 100 [set tree-size-t2 tree-size-t1 + random-normal 0.4 0.5] ;simulates tree growth for trees <100 years of age
-    if (age > 100) AND (age < 200) [set tree-size-t2 tree-size-t1 + random-normal 0.3 0.5] ;simulates tree growth for trees >100 years and <200 years of age
-    if (age > 200) [set tree-size-t2 tree-size-t1 + random-normal 0.2 0.5] ;simulates tree growth for trees >200 years of age
+    if (age > 100) AND (age < 200) [set tree-size-t2 tree-size-t1 + random-normal 0.35 0.5] ;simulates tree growth for trees >100 years and <200 years of age
+    if (age > 200) [set tree-size-t2 tree-size-t1 + random-normal 0.25 0.5] ;simulates tree growth for trees >200 years of age
      set growth-rate tree-size-t2 - tree-size-t1 ;this sets DBH growth rate over 1 year
      set tree-size-t1 tree-size-t2 ;set tree size at t2 as tree size at t1 for next tick
      set BA ((((tree-size-t1 / 200) ^ 2)  * (3.142))) ;calculates BA from DBH
      set tree-density count trees in-radius 11.28 ;count number of trees in an area equivalent to 20m squared
      set local-BA ((sum [BA] of trees in-radius 11.28) * 25) ;works out the basal area per hectare for each 20m squared area
-     set mature-count count trees 
+     ;set mature-count count trees 
      set mature-BA sum [BA] of trees
      set size 0.1 * tree-size-t1
   ] 
@@ -173,7 +173,7 @@ end
 to grow-juveniles ;simulates seedling growth using equations of Collet et al 2001
   ask juveniles [
     ifelse tree_size < 1.3
-    [ifelse local-BA < 25
+    [ifelse local-BA < 20
     [set tree_size tree_size + 0.095] ;seedling growth rates derived from Collet et al 2001
     [set tree_size tree_size + 0.012]
     ]
@@ -190,9 +190,9 @@ end
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;6 - JUVENILE DEATH: Juveniles die each year with the probability defined by the user in the "juvenile-mortality" slider
-;From our field observations we saw that there was limited recruitment of juveniles in gaps, therefore a switch allows the user to define whether mortality of juveniles differs in gaps
-;When switched on this increases annual probability of death for juveniles which do not have >=5 mature trees within the surrounding 40 metres squared to die with a probability of 0.98
-;In addtion the sub-model limits the number of juveniles that can be found on any single patch to 22, killing the excess. This parameter is based on values from Olesen and Madsen (2008)
+;From our field observations we saw that there was limited recruitment of juveniles in gaps, therefore a switch allows the user to define whether mortality of juveniles differs in gaps differs  from those under a closed canopy
+;When switched on this increases annual probability of death for juveniles which do not have a mature tree basal area of >=20 within the surrounding 40 metres squared to die
+;In addtion the sub-model limits the number of juveniles that can be found on any single patch to 3, killing the excess. This parameter is based on values from Olesen and Madsen (2008)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -204,13 +204,16 @@ to kill-juveniles
     ]
   ask patches [
     set no-juveniles count juveniles-here
-    if no-juveniles >= 3 [ask n-of (no-juveniles - 3) juveniles-here [die]]
+    if no-juveniles >= 3 [ask min-one-of juveniles-here [tree_size] [die]]
     ]
  ifelse differential-juvenile-mortality?
     [ask juveniles [
-        if tree-density < 5 [die]
+        if local-BA < 20 [die]
        if random-float 1 > (1 - juvenile-mortality) [die]]]
-    [ask juveniles [if random-float 1 > (1 - juvenile-mortality) [die]]]
+    [ask juveniles [
+        if random-float 1 > (1 - juvenile-mortality) [die]
+        ]
+    ]
 end
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -237,7 +240,7 @@ to age-patches
 end
 
 
-; USEFUL REFERENCES
+; REFERENCES
 ; Olesen, C.R., Madsen, P., 2008. The impact of roe deer (Capreolus capreolus), seedbed, light and seed fall on natural beech (Fagus sylvatica) regeneration. For. Ecol. Manage. 255, 3962–3972. doi:10.1016/j.foreco.2008.03.050
 ; Hasenkamp, N., Ziegenhagen, B., Mengel, C., Schulze, L., Schmitt, H.P., Liepelt, S., 2011. Towards a DNA marker assisted seed source identification: A pilot study in European beech (Fagus sylvatica L.). Eur. J. For. Res. 130, 513–519. doi:10.1007/s10342-010-0439-3
 ; Holzwarth, F., Kahl, A., Bauhus, J., Wirth, C., 2013. Many ways to die - partitioning tree mortality dynamics in a near-natural mixed deciduous forest. J. Ecol. 101, 220–230. doi:10.1111/1365-2745.12015
@@ -319,7 +322,7 @@ true
 false
 "" ""
 PENS
-"default" 10.0 2 -16777216 true "" "histogram [age] of trees"
+"default" 10.0 1 -16777216 true "" "histogram [age] of trees"
 
 PLOT
 475
@@ -348,7 +351,7 @@ juvenile-mortality
 juvenile-mortality
 0
 1
-0.8
+0
 0.1
 1
 NIL
@@ -414,7 +417,7 @@ mean-tree-age
 mean-tree-age
 0
 200
-90
+96
 1
 1
 NIL
@@ -917,7 +920,7 @@ NetLogo 5.1.0
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="Experiment_1" repetitions="3" runMetricsEveryStep="true">
+  <experiment name="Experiment_1" repetitions="20" runMetricsEveryStep="true">
     <setup>setup</setup>
     <go>go</go>
     <timeLimit steps="150"/>

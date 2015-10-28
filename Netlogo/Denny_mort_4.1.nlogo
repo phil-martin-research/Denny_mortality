@@ -43,7 +43,7 @@ to setup-turtles ;create initial trees
     set local-BA ((sum [BA] of trees in-radius 11.28) * 25) ;get per ha BA of trees in a radius of 6.35 cells, approximately 40 m^2
     set size 0.1 * tree-size-t1
     setxy random-xcor random-ycor] ;this locates trees in centre of a random patch
-  create-juveniles 20 * n-trees ;creates 20 juveniles for each mature tree
+  create-juveniles 82 * n-trees ;creates 20 juveniles for each mature tree
   [set color brown
     set age random-exponential 5 
     set tree_size age * 0.095 ;this determines the size of the seedling based on equations of Collet et al 2001
@@ -115,8 +115,8 @@ to grow-trees ;this increases tree size using equations approximately equivalent
   ;young trees increase in DBH rapidly and this slows in older trees
   ask trees [
     if age < 100 [set tree-size-t2 tree-size-t1 + random-normal 0.4 0.5] ;simulates tree growth for trees <100 years of age
-    if (age > 100) AND (age < 200) [set tree-size-t2 tree-size-t1 + random-normal 0.3 0.5] ;simulates tree growth for trees >100 years and <200 years of age
-    if (age > 200) [set tree-size-t2 tree-size-t1 + random-normal 0.2 0.5] ;simulates tree growth for trees >200 years of age
+    if (age > 100) AND (age < 200) [set tree-size-t2 tree-size-t1 + random-normal 0.35 0.5] ;simulates tree growth for trees >100 years and <200 years of age
+    if (age > 200) [set tree-size-t2 tree-size-t1 + random-normal 0.25 0.5] ;simulates tree growth for trees >200 years of age
      set growth-rate tree-size-t2 - tree-size-t1 ;this sets DBH growth rate over 1 year
      set tree-size-t1 tree-size-t2 ;set tree size at t2 as tree size at t1 for next tick
      set BA ((((tree-size-t1 / 200) ^ 2)  * (3.142))) ;calculates BA from DBH
@@ -173,7 +173,7 @@ end
 to grow-juveniles ;simulates seedling growth using equations of Collet et al 2001
   ask juveniles [
     ifelse tree_size < 1.3
-    [ifelse local-BA < 25
+    [ifelse local-BA < 20
     [set tree_size tree_size + 0.095] ;seedling growth rates derived from Collet et al 2001
     [set tree_size tree_size + 0.012]
     ]
@@ -190,9 +190,9 @@ end
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;6 - JUVENILE DEATH: Juveniles die each year with the probability defined by the user in the "juvenile-mortality" slider
-;From our field observations we saw that there was limited recruitment of juveniles in gaps, therefore a switch allows the user to define whether mortality of juveniles differs in gaps
-;When switched on this increases annual probability of death for juveniles which do not have >=5 mature trees within the surrounding 40 metres squared to die with a probability of 0.98
-;In addtion the sub-model limits the number of juveniles that can be found on any single patch to 22, killing the excess. This parameter is based on values from Olesen and Madsen (2008)
+;From our field observations we saw that there was limited recruitment of juveniles in gaps, therefore a switch allows the user to define whether mortality of juveniles differs in gaps differs  from those under a closed canopy
+;When switched on this increases annual probability of death for juveniles which do not have a mature tree basal area of >=20 within the surrounding 40 metres squared to die
+;In addtion the sub-model limits the number of juveniles that can be found on any single patch to 3, killing the excess. This parameter is based on values from Olesen and Madsen (2008)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -208,9 +208,12 @@ to kill-juveniles
     ]
  ifelse differential-juvenile-mortality?
     [ask juveniles [
-        if tree-density < 5 [die]
+        if local-BA < 20 [die]
        if random-float 1 > (1 - juvenile-mortality) [die]]]
-    [ask juveniles [if random-float 1 > (1 - juvenile-mortality) [die]]]
+    [ask juveniles [
+        if random-float 1 > (1 - juvenile-mortality) [die]
+        ]
+    ]
 end
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -319,7 +322,7 @@ true
 false
 "" ""
 PENS
-"default" 10.0 2 -16777216 true "" "histogram [age] of trees"
+"default" 10.0 1 -16777216 true "" "histogram [age] of trees"
 
 PLOT
 475
@@ -348,7 +351,7 @@ juvenile-mortality
 juvenile-mortality
 0
 1
-0.8
+1
 0.1
 1
 NIL
@@ -414,7 +417,7 @@ mean-tree-age
 mean-tree-age
 0
 200
-90
+96
 1
 1
 NIL
@@ -917,7 +920,7 @@ NetLogo 5.1.0
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="Experiment_1" repetitions="3" runMetricsEveryStep="true">
+  <experiment name="Experiment_1" repetitions="20" runMetricsEveryStep="true">
     <setup>setup</setup>
     <go>go</go>
     <timeLimit steps="150"/>
