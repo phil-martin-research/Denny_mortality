@@ -20,6 +20,7 @@ Soils<-read.csv("Data/Soil_type.csv")
 
 #subset to remove data prior to 1984
 Dead<-subset(Dead,Year>1984)
+summary(Dead)
 #filter out trees that have unrealistic growth rates
 Dead<-subset(Dead,!is.na(Dead))
 Dead<-subset(Dead,GR>-20&GR<20&relBAGR<4)
@@ -30,22 +31,11 @@ Dead_F<-subset(Dead,Species=="F")
 keeps<-c("ID2","Block","Dead","Easting","Northing","SL","Species","GR","BAGR","relGR","relBAGR","DBH2","BA2","relSize","Dead_dist","Dead_No","Clay","Silt","Sand")
 Dead_F<-Dead_F[keeps]
 
-mean(Dead_F$Dead_dist)
-sd(Dead_F$Dead_dist)
-
-mean(Dead_F$Sand)
-sd(Dead_F$Sand)
-
 #standardise variables following Zuur et al recommendations
 head(Dead_F)
 Dead_F_st<-cbind(Dead_F[,1:7],apply(X=Dead_F[,8:ncol(Dead_F)],MARGIN=2,FUN=function(x) {(x-mean(x))/sd(x)}))
 head(Dead_F_st)
 
-mean(Dead_F_st$Sand)
-sd(Dead_F_st$Sand)
-
-mean(Dead_F_st$Dead_dist)
-sd(Dead_F_st$Sand)
 
 #candidates for growth rate variables
 M0<-glmer(Dead~1+offset(log(SL))+(1|Block),Dead_F,family=binomial(link="cloglog"))        
@@ -201,8 +191,8 @@ new.data.Dead$Dead_dist<-(new.data.Dead$Dead_dist*sd(Dead_F$Dead_dist))+mean(Dea
 
 #next for soil type
 new.data.Sand<-data.frame(GR=mean(Dead_F_st$GR),SL=1,Dead_dist=mean(Dead_F_st$Dead_dist),DBH2=mean(Dead_F_st$DBH2),Sand=seq(min(Dead_F_st$Sand),max(Dead_F_st$Sand),length.out=500),Type="Sand content")
-mm <- model.matrix(terms(M3),new.data.Dead)
-new.data.Sand$Dead<-predict(Avs,newdata=new.data.Dead,re.form=NA)
+mm <- model.matrix(terms(M3),new.data.Sand)
+new.data.Sand$Dead<-predict(Avs,newdata=new.data.Sand,re.form=NA)
 pvar1 <- diag(mm %*% tcrossprod(vcov(M3),mm))
 tvar1 <- pvar1+VarCorr(M3)$Block[1]  
 new.data.Sand<- data.frame(
@@ -221,25 +211,21 @@ plot(new.data.Sand$Sand,new.data.Dead$Dead)
 theme_set(theme_bw(base_size=12))
 #growth rate
 GR_P1<-ggplot(data=new.data.GR,aes(x=GR,y=1-exp(-exp(Dead))))+geom_line()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))+ theme(legend.position="none")                                                                                                                                            
-GR_P2<-GR_P1+xlab("Growth rate (mm per year)")+ylab("Annual probability of death")+ annotate("text", x = -19, y = 1, label = "(a)")
-GR_P3<-GR_P2+geom_ribbon(data=new.data.GR,aes(x=GR,ymax=1-exp(-exp(thi)),ymin=1-exp(-exp(tlo))),alpha=0.2)
+GR_P2<-GR_P1+xlab("Growth rate (mm per year)")+ylab("Annual probability of death")+ annotate("text", x = -20, y = 0.4, label = "(a)")
 
 #DBH
 DBH_P1<-ggplot(data=new.data.DBH,aes(x=DBH2,y=1-exp(-exp(Dead))))+geom_line()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))+ theme(legend.position="none")                                                                                                                                            
-DBH_P2<-DBH_P1+xlab("Diameter at breast height (cm)")+ylab("Annual probability of death")+ annotate("text", x = 0, y = 0.15, label = "(b)")
-DBH_P3<-DBH_P2+geom_ribbon(data=new.data.DBH,aes(x=DBH2,ymax=1-exp(-exp(thi)),ymin=1-exp(-exp(tlo))),alpha=0.2)
+DBH_P2<-DBH_P1+xlab("Diameter at breast height (cm)")+ylab("Annual probability of death")+ annotate("text", x = 0, y = 0.015, label = "(b)")
 
 #distance from dead tree
 Dead_P1<-ggplot(data=new.data.Dead,aes(x=Dead_dist,y=1-exp(-exp(Dead))))+geom_line()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))+ theme(legend.position="none")                                                                                                                                            
-Dead_P2<-Dead_P1+xlab("Distance to nearest dead tree (m)")+ylab("Annual probability of death")+ annotate("text", x = 0, y = 0.08, label = "(c)")
-Dead_P3<-Dead_P2+geom_ribbon(data=new.data.Dead,aes(x=Dead_dist,ymax=1-exp(-exp(thi)),ymin=1-exp(-exp(tlo))),alpha=0.2)
+Dead_P2<-Dead_P1+xlab("Distance to nearest dead tree (m)")+ylab("Annual probability of death")+ annotate("text", x = 0, y = 0.01, label = "(c)")
 
 #sand content
 Sand_P1<-ggplot(data=new.data.Sand,aes(x=Sand,y=1-exp(-exp(Dead))))+geom_line()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))+ theme(legend.position="none")                                                                                                                                            
-Sand_P2<-Sand_P1+xlab("Sand content or soil (%)")+ylab("Annual probability of death")+ annotate("text", x = 28, y = 0.06, label = "(d)")
-Sand_P3<-Sand_P2+geom_ribbon(data=new.data.Sand,aes(x=Sand,ymax=1-exp(-exp(thi)),ymin=1-exp(-exp(tlo))),alpha=0.2)
+Sand_P2<-Sand_P1+xlab("Sand content of soil (%)")+ylab("Annual probability of death")+ annotate("text", x = 28, y = 0.64, label = "(d)")
 
 #put all figures together into one
 png("Figures/Tree_death.png",height=6,width=10,res=300,units="in")
-grid.arrange(GR_P3,DBH_P3,Dead_P3,Sand_P3,ncol=2)
+grid.arrange(GR_P2,DBH_P2,Dead_P2,Sand_P2,ncol=2)
 dev.off()
