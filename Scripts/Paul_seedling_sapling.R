@@ -7,12 +7,17 @@ library(gridExtra)
 
 #load in data
 Seedlings<-read.csv("Data/Phil_Data_Seedlings_Saplings.csv")
+Seedlings$Can_Std<-(Seedlings$Canopy.Openness.Total-mean(Seedlings$Canopy.Openness.Total))/sd(Seedlings$Canopy.Openness.Total)
+
 
 #models of seedling abundance over gradient of canopy openness
 Seed0<-glmer(FagusSeedlings~1+(1|Site),family="poisson",data=Seedlings)
-Seed1<-glmer(FagusSeedlings~Canopy.Openness.Total+(1|Site),family="poisson",data=Seedlings)
+Seed1<-glmer(FagusSeedlings~Can_Std+(1|Site),family="poisson",data=Seedlings)
+summary(model.avg(Seed0,Seed1))$coefmat.subset
 
-plot(Seedlings$Canopy.Openness.Total,exp(predict(Seed1,re.form=NA)))
+
+
+plot(Seedlings$Can_Std,exp(predict(Seed1,re.form=NA)))
 
 Seedlings$pred<-exp(predict(Seed1,re.form=NA))
 
@@ -21,10 +26,14 @@ Seedlings$pred<-exp(predict(Seed1,re.form=NA))
 Sap0<-glmer(FagusSaplings~1+(1|Site),family="poisson",data=Seedlings)
 Sap1<-glmer(FagusSaplings~Canopy.Openness.Total+(1|Site),family="poisson",data=Seedlings)
 
+model.sel(Sap0,Sap1)
+summary(model.avg(Sap0,Sap1))$coefmat.subset
+
 Seedlings$pred2<-exp(predict(Sap1,re.form=NA))
 
 plot(Seedlings$Canopy.Openness.Total,exp(predict(Sap1,re.form=NA)))
 plot(Seedlings$SBA,Seedlings$Canopy.Openness.Total)
+plot(Seedlings$SBA,Seedlings$FagusSeedlings)
 
 
 theme_set(theme_bw(base_size=12))
