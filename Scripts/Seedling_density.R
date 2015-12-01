@@ -28,7 +28,7 @@ Seedlings<-Seedlings[,!(names(Seedlings) %in% drop)]
 head(Seedlings)
 Seedlings2<-subset(Seedlings,Species=="Fagus sylvatica"|Species=="Quercus spp"|Species=="Ilex aquifolium")
 Seed_melt<-melt(Seedlings2,id.vars = c("Plot","Count"))
-Seed_melt2<-ddply(Seed_melt,.(Plot,value),summarize,Count=sum(Count)*100)
+Seed_melt2<-ddply(Seed_melt,.(Plot,value),summarize,Count=sum(Count))
 Seed_melt3<-spread(Seed_melt2, value, Count)
 Seed_melt3[is.na(Seed_melt3)] <- 0
 colnames(Seed_melt3)<-c("Plot","Beech","Holly","Oak")
@@ -84,46 +84,29 @@ ggplot(Seed_browsing,aes(x=Canopy_open,y=Sward_h))+geom_point()+geom_smooth(meth
 #in addition there is no relationship between canopy openness and browsing pressure
 head(Seed_browsing)
 
-Seed_browsing2<-cbind(Seed_browsing[,1],apply(X=Seed_browsing[,2:(ncol(Seed_browsing)-3)],MARGIN=2,FUN=function(x) {(x-mean(x))/sd(x)}),Seed_browsing[,8:10])
-
+Seed_browsing2<-data.frame(Canopy=Seed_browsing$Canopy,Canopy_std=(Seed_browsing$Canopy_open-mean(Seed_browsing$Canopy_open))/sd(Seed_browsing$Canopy_open),Seed_browsing[,8:10])
+head(Seed_browsing2)
 
 #now test to see if there is a relationship between canopy openness and beech seedling density
-M0<-glm(I(Beech/100)~1,data=Seed_browsing2,family="poisson")
-M1<-glm(I(Beech/100)~Canopy_open,data=Seed_browsing2,family="poisson")
-M2<-glm(I(Beech/100)~Canopy_open+I(Canopy_open^2),data=Seed_browsing2,family="poisson")
-M3<-glm(I(Beech/100)~Canopy_open+I(Canopy_open^2)+Deer_dung,data=Seed_browsing2,family="poisson")
-M4<-glm(I(Beech/100)~Canopy_open+I(Canopy_open^2)+Horse_dung,data=Seed_browsing2,family="poisson")
-M5<-glm(I(Beech/100)~Canopy_open+I(Canopy_open^2)+Horse_dung+Deer_dung,data=Seed_browsing2,family="poisson")
-AICc(M0,M1,M2,M3,M4,M5)
-par(mfrow=c(2,2))
-plot(M1)
-summary(M0)
-summary(M1)
-1-(97.742/129.762)
-
-par(mfrow=c(1,1))
-plot(Seed_browsing$Canopy_open,Seed_browsing$Beech/100)
-points(Seed_browsing$Canopy_open,exp(predict(M1)),col="red")
-#there is a positive relationship between beech seedling density and canopy openness
-#but there is no evidence of other relationships
+M0<-glm(Beech~1,data=Seed_browsing2,family="poisson")
+M1<-glm(Beech~Canopy_std,data=Seed_browsing2,family="poisson")
+M2<-glm(Beech~Canopy_std+I(Canopy_std^2),data=Seed_browsing2,family="poisson")
+Model_selection<-model.sel(M0,M1,M2)
+model_average<-summary(model.avg(Model_selection))$coefmat.subset
+model_average2<-model.avg(Model_selection,fit = T)
 
 
-#now test to see if there is a relatioship between canopy openness and holly seedling density
-M0<-glm(I(Holly/100)~1,data=Seed_browsing,family="poisson")
-M1<-glm(I(Holly/100)~Canopy_open,data=Seed_browsing,family="poisson")
-M2<-glm(I(Holly/100)~Canopy_open+I(Canopy_open^2),data=Seed_browsing,family="poisson")
-M3<-glm(I(Holly/100)~Canopy_open+I(Canopy_open^2)+Deer_dung,data=Seed_browsing,family="poisson")
-M4<-glm(I(Holly/100)~Canopy_open+I(Canopy_open^2)+Horse_dung,data=Seed_browsing,family="poisson")
-M5<-glm(I(Holly/100)~Canopy_open+I(Canopy_open^2)+I(Horse_dung+Deer_dung),data=Seed_browsing,family="poisson")
 
-AICc(M0,M1,M2,M3,M4,M5)
-par(mfrow=c(2,2))
-plot(M5)
-summary(M0)
-summary(M4)
-1-(81573/111495)
+#produce plot to show relationship between canopy openness and seedling density
+df<-data.frame(Beech=0,Canopy=seq(0,70,0.1))
+df$Canopy_Std<-(df$Canopy-mean(Seed_browsing$Canopy_open))/sd(Seed_browsing$Canopy_open)
+df$I(Canopy_std^2)<-df$Canopy_Std^2
+new.data$Beech<-
+  predict(model_average2,newdata=df)
 
-par(mfrow=c(1,1))
-plot(Seed_browsing$Canopy_open,Seed_browsing$Holly/100)
-points(Seed_browsing$Canopy_open,exp(predict(M4)),col="red")
-#holly seedling density peaks at a canopy openness of about 30% before dropping again
+print(M2)
+
+?predict
+
+#now plot predictions
+ggplot(Seed_browsing2,aes(x=Canopy,y=Beech))+geom_point(shape=1,size=2)+geom_line(data=new.data,aes(x=Canopy,y=Beech))

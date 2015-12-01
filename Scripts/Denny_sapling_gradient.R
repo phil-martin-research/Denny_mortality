@@ -32,20 +32,15 @@ Browsing<-Browsing[complete.cases(Browsing),]
 Sapling_browsing<-merge(Browsing,Saplings2,by.x="Plot",by.y="Block")
 str(Sapling_browsing)
 
-#now test a zero -inflated model relating canopy openness to sapling density
-summary(M1 <- zeroinfl(Count ~ Canopy_open|I(Deer_dung+Horse_dung), data = Sapling_browsing))
-
-
+#now test a model relating canopy openness to sapling density
+M0<-glm(Count~1,family="poisson",data=Sapling_browsing)
 M1<-glm(Count~Canopy_open,family="poisson",data=Sapling_browsing)
-summary(M1)
-1-(2140/2882)
+Model_sel<-model.sel(M0,M1)
+
+#there is no significant effect of canopy openness on sapling density
+summary(model.avg(M0,M1))
 
 
-
-
-summary(Sapling_browsing)
-new.data<-data.frame(Canopy_open=seq(0.6,60,0.01))
-new.data$Count<-predict(M1,newdata = new.data,type = "response")
 
 #now plot this model
 theme_set(theme_bw(base_size=12))
