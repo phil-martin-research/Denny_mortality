@@ -150,33 +150,32 @@ fmt<-function(){
 theme_set(theme_bw(base_size=12))
 Seed_grad_P1<-ggplot(Seedlings, aes(x=Canopy.Openness.Total,y=FagusSeedlings))+geom_point(shape=1)+geom_line(aes(group=NULL,y=seed_pred),colour="black")
 Seed_grad_P2<-Seed_grad_P1+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))
-Seed_grad_P3<-Seed_grad_P2+ylab("")+xlab("")+ annotate("text", x = 0, y = 70, label = "(a)")+theme(plot.margin=unit(c(0,0,0,0), "cm"))
+Seed_grad_P3<-Seed_grad_P2+ylab(expression(paste("Beech seedling density ", subplot^-1,sep=" ")))+xlab("")+ annotate("text", x = 0, y = 70, label = "(a)")+theme(plot.margin=unit(c(0,0,0,0), "cm"))
 
 #now saplings from gradient plots
 Sap_grad_P1<-ggplot(Seedlings, aes(x=Canopy.Openness.Total,y=FagusSaplings))+geom_point(shape=1)
 Sap_grad_P2<-Sap_grad_P1+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))
-Sap_grad_P3<-Sap_grad_P2+ylab("")+xlab("")+ annotate("text", x = 0, y = 6, label = "(b)")+theme(plot.margin=unit(c(0,0,0,0), "cm"))
+Sap_grad_P3<-Sap_grad_P2+ylab(expression(paste("Beech sapling density ", subplot^-1,sep=" ")))+xlab("")+ annotate("text", x = 0, y = 6, label = "(b)")+theme(plot.margin=unit(c(0,0,0,0), "cm"))
 
 #now seedlings from Denny
 Seed_D_P1<-ggplot(Seed_browsing2, aes(x=Canopy,y=Beech))+geom_point(shape=1)+geom_line(data=df,aes(group=NULL,y=Seed_pred),colour="black")
 Seed_D_P2<-Seed_D_P1+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))
-Seed_D_P3<-Seed_D_P2+ylab("")+xlab("")+ annotate("text", x = 0, y = 15, label = "(c)")+theme(plot.margin=unit(c(0,0,0,0), "cm"))+scale_y_continuous(breaks=c(0,5,10,15))
+Seed_D_P3<-Seed_D_P2+ylab(expression(paste("Beech seedling density ", subplot^-1,sep=" ")))+xlab("")+ annotate("text", x = 0, y = 15, label = "(c)")+theme(plot.margin=unit(c(0,0,0,0), "cm"))+scale_y_continuous(breaks=c(0,5,10,15))
 
 #now saplings from Denny
 Sap_D_P1<-ggplot(Sapling_browsing, aes(x=Canopy_open,y=Count))+geom_point(shape=1)
 Sap_D_P2<-Sap_D_P1+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))
-Sap_D_P3<-Sap_D_P2+ylab("")+xlab("")+ annotate("text", x = 0, y = 3, label = "(d)")+theme(plot.margin=unit(c(0,0,0,0), "cm"))
+Sap_D_P3<-Sap_D_P2+ylab(expression(paste("Beech sapling density ", subplot^-1,sep=" ")))+xlab("")+ annotate("text", x = 0, y = 3, label = "(d)")+theme(plot.margin=unit(c(0,0,0,0), "cm"))
 
 
 
 
-
+png("Figures/Seedling_sapling.png",height=6,width=8,res = 800,units = "in")
 grid.arrange(arrangeGrob(Seed_grad_P3,
                          Sap_grad_P3,
                          Seed_D_P3,
                          Sap_D_P3,
                          ncol=2,
-                         left = textGrob(expression(paste("Beech sapling density ", subplot^-1,sep=" ")), rot = 90, vjust = 1),
                          bottom= textGrob("Canopy openness (%)", vjust = -1) 
 ))
 dev.off()
