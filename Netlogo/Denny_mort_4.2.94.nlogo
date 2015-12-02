@@ -13,7 +13,7 @@ breed [juveniles juvenile]
 breed [dead-trees dead-tree]
 trees-own [age BA tree-size-t1 tree-size-t2 growth-rate dist-dead dead]
 juveniles-own [age tree_size]
-patches-own[dead-count time-dead no-juveniles local-BA tree-density]
+patches-own[dead-count time-dead no-juveniles local-BA local-canopy tree-density]
 dead-trees-own[age BA tree-size-t1 tree-size-t2 growth-rate dist-dead dead]
 
 
@@ -85,7 +85,7 @@ to go
    ask patches[
    count-juveniles
    get-local-BA
-   ;get-local-density
+   get-local-canopy
    age-patches
    ]
    ask juveniles [
@@ -137,9 +137,9 @@ end
 to grow-trees ;this increases tree size using equations approximately equivalent to those of Holzwarth et al. 2013
   ;young trees increase in DBH rapidly and this slows in older trees
     set age age + 1
-    if age < 100 [set tree-size-t2 tree-size-t1 + random-normal 0.4 0.2] ;simulates tree growth for trees <100 years of age
-    if (age > 100) AND (age < 200) [set tree-size-t2 tree-size-t1 + random-normal 0.35 0.2] ;simulates tree growth for trees >100 years and <200 years of age
-    if (age > 200) [set tree-size-t2 tree-size-t1 + random-normal 0.25 0.2] ;simulates tree growth for trees >200 years of age
+    if age < 100 [set tree-size-t2 tree-size-t1 + random-normal 0.4 0.3] ;simulates tree growth for trees <100 years of age
+    if (age > 100) AND (age < 200) [set tree-size-t2 tree-size-t1 + random-normal 0.35 0.3] ;simulates tree growth for trees >100 years and <200 years of age
+    if (age > 200) [set tree-size-t2 tree-size-t1 + random-normal 0.25 0.3] ;simulates tree growth for trees >200 years of age
      set growth-rate (tree-size-t2 - tree-size-t1) * 10 ;this sets DBH growth rate over 1 year in mm
      set tree-size-t1 tree-size-t2 ;set tree size at t2 as tree size at t1 for next tick
      set BA ((((tree-size-t1 / 200) ^ 2)  * (3.142))) ;calculates BA from DBH
@@ -176,6 +176,9 @@ to kill-trees
 end
 
 to mature-thinning
+    if [local-BA] of patch-here >= 75 [ask min-one-of trees in-radius 11.4 [BA] [die]]
+    if [local-BA] of patch-here >= 75 [ask min-one-of trees in-radius 11.4 [BA] [die]]
+    if [local-BA] of patch-here >= 75 [ask min-one-of trees in-radius 11.4 [BA] [die]]
     if [local-BA] of patch-here >= 75 [ask min-one-of trees in-radius 11.4 [BA] [die]]
 end
 
@@ -224,7 +227,7 @@ to kill-juveniles
 end
 
 to juvenile-thinning
-    if count juveniles-here > 1 [if [no-juveniles] of patch-here >= 3 [ask min-one-of juveniles-here [tree_size][die]]]
+    loop [ifelse count juveniles-here > 1 [if [no-juveniles] of patch-here >= 3 [ask min-one-of juveniles-here [tree_size][die]]] [stop]]
 end
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -265,6 +268,12 @@ to get-local-BA
   [set pcolor scale-color green (local-BA) 0 150]
 end
 
+to get-local-canopy
+  set local-canopy 100 * ((exp(-1.16772 + ((local-BA - 33.3885) / 23.99018) * -1.59646)) / (1 + exp(-1.16772 + ((local-BA - 33.3885) / 23.99018) * -1.59646)))
+  if patch-variable-to-display = "local canopy openness"
+  [set pcolor scale-color green (local-canopy) 0 100]
+end
+
 to get-local-density
   set tree-density count trees in-radius 11.28
   if patch-variable-to-display = "local tree density"
@@ -277,7 +286,7 @@ end
 ;
 
 to mast
-  ifelse time-since-mast >= 3
+  ifelse (time-since-mast > 1) AND (random-float 1 <= 0.3)
   [set mast-year 1
    set time-since-mast 0]
   [set mast-year 0
@@ -395,7 +404,7 @@ juvenile-mortality
 juvenile-mortality
 0
 1
-1
+0
 0.1
 1
 NIL
@@ -562,8 +571,8 @@ CHOOSER
 215
 patch-variable-to-display
 patch-variable-to-display
-"local basal area" "local tree density" "juvenile density"
-0
+"none" "local basal area" "local canopy openness" "juvenile density"
+1
 
 TEXTBOX
 20

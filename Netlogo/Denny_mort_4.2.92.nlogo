@@ -13,7 +13,7 @@ breed [juveniles juvenile]
 breed [dead-trees dead-tree]
 trees-own [age BA tree-size-t1 tree-size-t2 growth-rate dist-dead dead]
 juveniles-own [age tree_size]
-patches-own[dead-count time-dead no-juveniles local-BA tree-density]
+patches-own[dead-count time-dead no-juveniles local-BA local-canopy tree-density]
 dead-trees-own[age BA tree-size-t1 tree-size-t2 growth-rate dist-dead dead]
 
 
@@ -85,7 +85,7 @@ to go
    ask patches[
    count-juveniles
    get-local-BA
-   ;get-local-density
+   get-local-canopy
    age-patches
    ]
    ask juveniles [
@@ -263,6 +263,12 @@ to get-local-BA
   set local-BA ((sum [BA] of trees in-radius 11.28) * 25)
   if patch-variable-to-display = "local basal area"
   [set pcolor scale-color green (local-BA) 0 150]
+end
+
+to get-local-canopy
+  set local-canopy 100 * ((exp(-1.16772 + ((local-BA - 33.3885) / 23.99018) * -1.59646)) / (1 + exp(-1.16772 + ((local-BA - 33.3885) / 23.99018) * -1.59646)))
+  if patch-variable-to-display = "local canopy openness"
+  [set pcolor scale-color green (local-canopy) 0 100]
 end
 
 to get-local-density
@@ -562,8 +568,8 @@ CHOOSER
 215
 patch-variable-to-display
 patch-variable-to-display
-"local basal area" "local tree density" "juvenile density"
-0
+"local basal area" "local canopy openness" "juvenile density"
+1
 
 TEXTBOX
 20
