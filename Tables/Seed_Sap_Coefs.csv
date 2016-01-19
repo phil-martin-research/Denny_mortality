@@ -1,0 +1,9 @@
+Model name,Parameter,Estimate,SE,Adj_SE,Z_val,P_val
+Gradient seedlings,Intercept,0.77,0.40,0.41,1.86,0.06
+Gradient seedlings,Slope,0.41,0.06,0.06,6.63,<0.01
+Gradient saplings,Intercept,-2.19,0.66,0.67,3.27,<0.01
+Gradient saplings,Slope,-0.61,0.32,0.33,1.83,0.07
+Denny seedlings,Intercept,-0.08,0.16,0.16,0.48,0.63
+Denny seedlings,Slope,0.56,0.09,0.09,6.23,<0.01
+Denny saplings,Intercept,-2.82,0.89,0.91,3.11,<0.01
+Denny saplings,Slope,-2.09,1.05,1.08,1.94,0.05
