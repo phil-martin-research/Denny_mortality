@@ -170,12 +170,16 @@ for (i in 1:length(Uni_Tree)){
 }
 
 Tree_dead3<-Tree_dead3[with(Tree_dead3, order(ID2,Year)), ]
-head(Tree_dead3,n = 20)
+
+Tree_dead3$GR<-ifelse(Tree_dead3$GR<0,0,Tree_dead3$GR)
+Tree_dead3$BAGR<-ifelse(Tree_dead3$BAGR<0,0,Tree_dead3$BAGR)
+Tree_dead3$relGR<-ifelse(Tree_dead3$GR<0,0,Tree_dead3$elGR)
+Tree_dead3$relBAGR<-ifelse(Tree_dead3$relBAGR<0,0,Tree_dead3$relBAGR)
 
 
 Tree_dead3$SL<-NA
 Years_1<-data.frame(Year=c(1964,1984,1988,1996,2014),SL=c(NA,20,4,12,18))
-Tree_dead4_2<-NULL
+Tree_dead4_1<-NULL
 Tree_dead3_1<-subset(Tree_dead3,Block<51)
 for (i in 1:nrow(Years_1)){
   Dead_sub<-subset(Tree_dead3_1,Year==Years_1$Year[i])
