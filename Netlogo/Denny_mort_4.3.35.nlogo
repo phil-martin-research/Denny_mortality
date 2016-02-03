@@ -1011,14 +1011,15 @@ NetLogo 5.1.0
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="Experiment_1" repetitions="2" runMetricsEveryStep="true">
+  <experiment name="Experiment_1" repetitions="100" runMetricsEveryStep="true">
     <setup>setup</setup>
     <go>go</go>
-    <timeLimit steps="50"/>
+    <timeLimit steps="53"/>
     <metric>sum [BA] of trees</metric>
     <metric>count trees with [tree-size-t1 &gt; 10]</metric>
     <metric>mean [tree-size-t1] of trees</metric>
     <metric>standard-deviation [tree-size-t1] of trees</metric>
+    <metric>mean [local-canopy] of patches</metric>
     <enumeratedValueSet variable="spatial-feedback?">
       <value value="true"/>
       <value value="false"/>
