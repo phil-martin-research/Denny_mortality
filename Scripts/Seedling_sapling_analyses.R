@@ -26,7 +26,8 @@ Seed1<-glmer(FagusSeedlings~Can_Std+(1|Site),family="poisson",data=Seedlings)
 Seed_model_sel<-model.sel(Seed0,Seed1)
 Seed_model_sel$R2<-c(r.squaredGLMM(Seed1)[1],r.squaredGLMM(Seed0)[1])
 Seed_avg<-model.avg(Seed_model_sel,fit = T)
-Seed_coefs<-summary(model.avg(Seed0,Seed1))$coefmat.subset
+Seed_coefs<-data.frame(summary(model.avg(Seed0,Seed1))$coefmat.subset)
+Seed_coefs$Model<-"Gradient seedlings"
 Seedlings$seed_pred<-exp(predict(Seed_avg,re.form=NA))
 
 
@@ -36,7 +37,8 @@ Sap1<-glmer(FagusSaplings~Can_Std+(1|Site),family="poisson",data=Seedlings)
 Sap_model_sel<-model.sel(Sap0,Sap1)
 Sap_model_sel$R2<-c(r.squaredGLMM(Sap1)[1],r.squaredGLMM(Sap0)[1])
 Sap_avg<-model.avg(Sap_model_sel,fit = T)
-Sap_coefs<-summary(model.avg(Sap0,Sap1))$coefmat.subset
+Sap_coefs<-data.frame(summary(model.avg(Sap0,Sap1))$coefmat.subset)
+Sap_coefs$Model<-"Gradient saplings"
 Seedlings$sap_pred<-exp(predict(Sap_avg,re.form=NA))
 
 ############################################################
@@ -100,7 +102,8 @@ M0<-glm(Beech~1,data=Seed_browsing2,family="poisson")
 M1<-glm(Beech~Canopy_std,data=Seed_browsing2,family="poisson")
 Seed_sel2<-model.sel(M0,M1)
 Seed_sel2$R2<-c(r.squaredGLMM(M1)[1],r.squaredGLMM(M0)[1])
-Seed_coefs2<-summary(model.avg(Seed_sel2))$coefmat.subset
+Seed_coefs2<-data.frame(summary(model.avg(Seed_sel2))$coefmat.subset)
+Seed_coefs2$Model<-"Denny seedlings"
 Seed_avg2<-model.avg(Seed_sel2,fit = T)
 df<-data.frame(Canopy=seq(min(Seed_browsing2$Canopy),max(Seed_browsing2$Canopy),0.1))
 df$Canopy_std<-(df$Canopy-mean(Seed_browsing$Canopy_open))/sd(Seed_browsing$Canopy_open)
@@ -133,7 +136,8 @@ M0<-glm(Count~1,family="poisson",data=Sapling_browsing)
 M1<-glm(Count~Canopy_Std,family="poisson",data=Sapling_browsing)
 Sap_sel2<-model.sel(M0,M1)
 Sap_sel2$R2<-c(r.squaredGLMM(M1)[1],r.squaredGLMM(M0)[1])
-Sap_coefs2<-summary(model.avg(Sap_sel2))$coefmat.subset
+Sap_coefs2<-data.frame(summary(model.avg(Sap_sel2))$coefmat.subset)
+Sap_coefs2$Model<-"Denny saplings"
 Sap_avg2<-model.avg(Sap_sel2,fit = T)
 Sapling_browsing$Sap_pred<-predict(Sap_avg2,backtransform = T)
 
@@ -179,3 +183,21 @@ grid.arrange(arrangeGrob(Seed_grad_P3,
                          bottom= textGrob("Canopy openness (%)", vjust = -1) 
 ))
 dev.off()
+
+
+#produce table to summarise coefficients
+Model_coefs<-rbind(Seed_coefs,Sap_coefs,Seed_coefs2,Sap_coefs2)
+colnames(Model_coefs)<-c("Estimate","SE","Adj_SE","Z_val","P_val","Model_name")
+write.csv(Model_coefs,"Tables/Seed_Sap_Coefs.csv",row.names=F)
+
+head(Seedlings)
+
+ggplot(Seedlings,aes(x=Canopy.Openness.Total))+geom_histogram()
+
+Seedlings$Canopy_bin<-cut(Seedlings$Canopy.Openness.Total,breaks = c(0,25,50,75,100),labels=c("0-25%","25-50%","50-75%","75-100%"))
+
+
+
+
+Grad_juv<-ddply(Seedlings,.(Canopy_bin),summarise,Saplings=sum(FagusSaplings),Seedlings=sum(FagusSeedlings))
+ddply(Grad_juv,.(Canopy_bin),summarise,Prop_surv=Saplings/Seedlings)

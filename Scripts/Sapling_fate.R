@@ -1,7 +1,7 @@
 #a script to track the fate of beech saplings at each survey
 
 #author: Phil Martin
-#last edited: 27/03/15
+#last edited: 01/12/15
 
 #load packages
 library(ggplot2)
@@ -23,6 +23,9 @@ YU<-unique(Trees$Year)[-1]
 for (i in 2:length(YU)){
   T1<-subset(Trees,Year==YU[i-1]&DBH<10&Status==1&Species=="F")
   T2<-subset(Trees,Year==YU[i]&Species=="F")
+  T2<-subset(Trees,Year==YU[i]&Species=="F"&Status==1&DBH<10)
+  
+  sum(T2$Status,na.rm = T)
   Merged<-merge(T1,T2,by="Tree_ID",all.x=T)  
   Merged$Status.y<-ifelse(is.na(Merged$Status.y),0,Merged$Status.y)
   Merged$Above10<-ifelse(Merged$DBH.y>10,1,0)
@@ -32,10 +35,13 @@ for (i in 2:length(YU)){
   Above10<-sum(Merged$Above10,na.rm = T)
   Below10<-(TotT1-(Dead+Above10))
   TotT2<-TotT1-Dead
+  Above10_2<-TotT1-Above10
   Mort<-1-(TotT2/TotT1)^(1/(YU[i]-YU[i-1]))
+  Perc_inc<-1-(Above10_2/TotT1)^(1/(YU[i]-YU[i-1]))
+  
   Fate<-data.frame(Year_1=YU[i-1],Year_2=YU[i],No_T1=TotT1,Died=Dead,Prop_died=round(Dead/TotT1,2),
-                   Increased=Above10,Prop_inc=round(Above10/TotT1,2),No_increase=Below10, Prop_no_inc=round(Below10/TotT1,2),
-                   Mort=Mort)
+                   Increased=Above10,Perc_inc=round(Perc_inc*100,2),No_increase=Below10, Prop_no_inc=round(Below10/TotT1,2),
+                   Mort=round(Mort*100,2))
   Fate2<-rbind(Fate,Fate2)
 }
 
