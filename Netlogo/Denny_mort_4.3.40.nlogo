@@ -431,7 +431,7 @@ juvenile-mortality
 juvenile-mortality
 0
 1
-0.8
+0.4
 0.1
 1
 NIL
@@ -480,7 +480,7 @@ SWITCH
 108
 spatial-feedback?
 spatial-feedback?
-0
+1
 1
 -1000
 
@@ -628,7 +628,7 @@ drought-rate
 drought-rate
 0
 20
-0
+4
 0.5
 1
 NIL
@@ -659,7 +659,7 @@ SWITCH
 53
 juvenile-death-in-gaps?
 juvenile-death-in-gaps?
-0
+1
 1
 -1000
 
@@ -1056,6 +1056,37 @@ NetLogo 5.1.0
     </enumeratedValueSet>
     <enumeratedValueSet variable="drought-rate">
       <value value="1"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="Drought-Experiment_1" repetitions="10" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="153"/>
+    <metric>sum [BA] of trees</metric>
+    <metric>count trees with [tree-size-t1 &gt; 10]</metric>
+    <metric>mean [tree-size-t1] of trees</metric>
+    <metric>standard-deviation [tree-size-t1] of trees</metric>
+    <metric>mean [local-canopy] of patches</metric>
+    <enumeratedValueSet variable="spatial-feedback?">
+      <value value="true"/>
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="juvenile-death-in-gaps?">
+      <value value="true"/>
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="juvenile-mortality">
+      <value value="0.3"/>
+      <value value="0.4"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="drought-rate">
+      <value value="1"/>
+      <value value="1.5"/>
+      <value value="2"/>
+      <value value="2.5"/>
+      <value value="3"/>
+      <value value="3.5"/>
+      <value value="4"/>
     </enumeratedValueSet>
   </experiment>
 </experiments>
