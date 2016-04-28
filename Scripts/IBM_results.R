@@ -20,13 +20,13 @@ Coll$gap_death<-as.factor(ifelse(Coll$gap_death==FALSE,"No","Yes"))
 
 Coll_summ<-ddply(Coll,.(time,juv.mort,spat_feed,gap_death),summarise,m_BA=median(BA),SD_BA=sd(BA),m_Trees=median(no_trees))
 Coll_summ<-subset(Coll_summ,time>1)
+Coll_summ<-subset(Coll_summ,juv.mort<=0.5)
+BA_summ2<-subset(BA_summ2,juv.mort<=0.5)
 
-
-
-theme_set(theme_bw(base_size=12))
-P1<-ggplot(Coll_summ,aes(x=time+1962,y=m_BA,colour=gap_death))+geom_line(size=1,aes(lty=spat_feed))+facet_wrap(~juv.mort,scales = "free")
+theme_set(theme_bw(base_size=16))
+P1<-ggplot(Coll_summ,aes(x=time+1962,y=m_BA,colour=gap_death))+geom_line(size=1,aes(lty=spat_feed))+facet_wrap(~juv.mort,ncol=3)
 P2<-P1+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))
-P3<-P2+ylab("Basal area")+xlab("Year")+ theme(panel.margin = unit(2, "lines"))+ theme(axis.text.x = element_text(angle = 90, hjust = 1))
+P3<-P2+ylab("Basal area")+ theme(axis.text.x = element_text(angle = 90, hjust = 1))+xlab("Year")
 P3+geom_point(data=BA_summ2,aes(x=Year,y=m_BA),size=3,shape=1,colour="black")+scale_linetype("Feedback type")+scale_color_discrete("Juvenile gap death")
 ggsave("Figures/IBM_results.png",height=6,width=10,dpi=400,units="in")
 

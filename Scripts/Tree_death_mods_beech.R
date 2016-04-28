@@ -60,14 +60,24 @@ M_D_no<-glmer(Dead~Dead_No+offset(log(SL))+(1|Block),Dead_F,family=binomial(link
 AICc(M0,M_D_dist,M_D_dist2,M_D_no)
 # distance to dead trees is best predictor
 
+#candidates for  relationships with soil 
+M0<-glmer(Dead~1+offset(log(SL))+(1|Block),Dead_F,family=binomial(link="cloglog"))        
+M_Clay<-glmer(Dead~Clay+offset(log(SL))+(1|Block),Dead_F,family=binomial(link="cloglog"))
+M_Silt<-glmer(Dead~Silt+I(Dead_dist^2)+offset(log(SL))+(1|Block),Dead_F,family=binomial(link="cloglog"))
+M_Sand<-glmer(Dead~Sand+offset(log(SL))+(1|Block),Dead_F,family=binomial(link="cloglog"))
+AICc(M0,M_Clay,M_Silt,M_Sand)
+# distance to dead trees is best predictor
+
+
+
 #now remove variables that I'm not going to use in the analyses
 Dead_F_st$DBH2_sq<-Dead_F_st$DBH2^2
-keeps<-c("Dead","DBH2","DBH2_sq","GR","Dead_dist","Sand","SL","Block")
+keeps<-c("Dead","DBH2","DBH2_sq","GR","Dead_dist","Clay","SL","Block")
 Dead_F_st2<-Dead_F_st[keeps]
 ggpairs(Dead_F_st2[,2:6]) #not much corrrelation between variables so should be safe to use them all
 
 #now a model of DBH, growth, distance to dead trees, number of live trees
-M1<-glmer(Dead~Dead_dist+DBH2+GR+Sand+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
+M1<-glmer(Dead~Dead_dist+DBH2+GR+Clay+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
 
 #now do model averaging
 options(na.action = "na.fail")
@@ -78,20 +88,20 @@ MS<-model.sel(models,subset=delta<=7)
 MS<-subset(MS,delta<=7)
 
 #now produce le Cessie-van Houwelingen-Copas-Hosmer global goodness of fit test statistics
-M1<-glmer(Dead~Dead_dist+DBH2+GR+Sand+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
-M2<-glmer(Dead~Dead_dist+DBH2+GR+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
-M3<-glmer(Dead~DBH2+GR+Sand+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
-M4<-glmer(Dead~DBH2+GR+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
-M5<-glmer(Dead~GR+Sand+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
-M6<-glmer(Dead~Dead_dist+GR+Sand+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
-M7<-glmer(Dead~GR+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
-M8<-glmer(Dead~Dead_dist+GR+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
+M1<-glmer(Dead~Dead_dist+DBH2+GR+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
+M2<-glmer(Dead~DBH2+GR+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
+M3<-glmer(Dead~DBH2+GR+Clay+Dead_dist+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
+M4<-glmer(Dead~Clay+DBH2+GR+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
+M5<-glmer(Dead~GR+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
+M6<-glmer(Dead~Dead_dist+GR+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
+M7<-glmer(Dead~Dead_dist+GR+Clay+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
+M8<-glmer(Dead~Clay+GR+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
 
 
 Model_list<-list(M1,M2,M3,M4,M5,M6,M7,M8)
 MS$GF_stat<-NA
 MS$GF_pval<-NA
-for (i in 1:7){
+for (i in 1:8){
   get(paste("M",i,sep=""))->Model
   MS$GF_stat[i]<-HLgof.test(fit = fitted(Model), obs = Dead_F_st$Dead,X=model.matrix(Model))$gof$statistic
   MS$GF_pval[i]<-HLgof.test(fit = fitted(Model), obs = Dead_F_st$Dead,X=model.matrix(Model))$gof$p.value            
@@ -107,38 +117,38 @@ importance(MS)
 Avs<-model.avg(MS,fit = T,subset =delta<=7)
 summary(Avs)
 
-
-write.csv(Avs$coefTable,"Tables/Beech_death_moav.csv")
 importance(Avs)
 
+
 #produce predictions from the model averaged coefficients
+Full_model<-glmer(Dead~Dead_dist+DBH2+GR+Clay+offset(log(SL))+(1|Block),Dead_F_st2,family=binomial(link="cloglog"))
+
 #first for growth rate
-new.data.GR<-data.frame(Dead=0,GR=seq(min(Dead_F_st2$GR),max(Dead_F_st2$GR),length.out=500),SL=1,Dead_dist=mean(Dead_F_st2$Dead_dist),DBH2=mean(Dead_F_st2$DBH2),Sand=mean(Dead_F_st2$Sand),Type="Growth rate")
-mm <- model.matrix(terms(M3),new.data.GR)
+new.data.GR<-data.frame(Dead=0,GR=seq(-2,max(Dead_F_st2$GR),length.out=500),SL=1,Dead_dist=mean(Dead_F_st2$Dead_dist),DBH2=mean(Dead_F_st2$DBH2),Clay=mean(Dead_F_st2$Clay),Type="Growth rate")
+mm <- model.matrix(terms(Full_model),new.data.GR)
 new.data.GR$GR<-(new.data.GR$GR*sd(Dead_F$GR))+mean(Dead_F$GR)
 new.data.GR$Dead<-predict(Avs,newdata=new.data.GR,re.form=NA,type = "response")
 
-
 #next for DBH
-new.data.DBH<-data.frame(Dead=0,GR=mean(Dead_F_st2$GR),SL=1,Dead_dist=mean(Dead_F_st2$Dead_dist),DBH2=seq(min(Dead_F_st2$DBH2),max(Dead_F_st2$DBH2),length.out=500),Sand=mean(Dead_F_st2$Sand),Type="DBH")
+new.data.DBH<-data.frame(Dead=0,GR=mean(Dead_F_st2$GR),SL=1,Dead_dist=mean(Dead_F_st2$Dead_dist),DBH2=seq(min(Dead_F_st2$DBH2),max(Dead_F_st2$DBH2),length.out=500),Clay=mean(Dead_F_st2$Clay),Type="DBH")
 new.data.DBH$DBH2<-(new.data.DBH$DBH2*sd(Dead_F$DBH2))+mean(Dead_F$DBH2)
 new.data.DBH$Dead<-predict(Avs,newdata=new.data.DBH,re.form=NA,type = "response")
 
 #next for distance to dead tree
-new.data.Dead<-data.frame(Dead=0,GR=mean(Dead_F_st$GR),SL=1,Dead_dist=seq(min(Dead_F_st$Dead_dist),max(Dead_F_st$Dead_dist),length.out=500),DBH2=mean(Dead_F_st$DBH2),Sand=mean(Dead_F_st$Sand),Type="Distance to dead tree")
+new.data.Dead<-data.frame(Dead=0,GR=mean(Dead_F_st$GR),SL=1,Dead_dist=seq(min(Dead_F_st$Dead_dist),max(Dead_F_st$Dead_dist),length.out=500),DBH2=mean(Dead_F_st$DBH2),Clay=mean(Dead_F_st2$Clay),Type="Distance to dead tree")
 new.data.Dead$Dead_dist<-(new.data.Dead$Dead_dist*sd(Dead_F$Dead_dist))+mean(Dead_F$Dead_dist)
 new.data.Dead$Dead<-predict(Avs,newdata=new.data.Dead,re.form=NA,type = "response")
 
 #next for soil type
-new.data.Sand<-data.frame(GR=mean(Dead_F_st$GR),SL=1,Dead_dist=mean(Dead_F_st$Dead_dist),DBH2=mean(Dead_F_st$DBH2),Sand=seq(min(Dead_F_st$Sand),max(Dead_F_st$Sand),length.out=500),Type="Sand content")
-new.data.Sand$Sand<-(new.data.Sand$Sand*sd(Dead_F$Sand))+mean(Dead_F$Sand)
-new.data.Sand$Dead<-predict(Avs,newdata=new.data.Sand,re.form=NA,type = "response")
+new.data.Clay<-data.frame(GR=mean(Dead_F_st$GR),SL=1,Dead_dist=mean(Dead_F_st$Dead_dist),DBH2=mean(Dead_F_st$DBH2),Clay=seq(min(Dead_F_st$Sand),max(Dead_F_st$Sand),length.out=500),Type="Clay content")
+new.data.Clay$Clay<-(new.data.Clay$Clay*sd(Dead_F$Clay))+mean(Dead_F$Clay)
+new.data.Clay$Dead<-predict(Avs,newdata=new.data.Clay,re.form=NA,type = "response")
 
 #now create a figure of this
 theme_set(theme_bw(base_size=12))
 #growth rate
 GR_P1<-ggplot(data=new.data.GR,aes(x=GR,y=1-exp(-exp(Dead))))+geom_line()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))+ theme(legend.position="none")                                                                                                                                            
-GR_P2<-GR_P1+xlab("Growth rate (mm per year)")+ylab("Annual probability of death")+ annotate("text", x = -1, y = 0.635, label = "(a)")
+GR_P2<-GR_P1+xlab("Growth rate (mm per year)")+ylab("Annual probability of death")+ annotate("text", x = -1, y = 0.645, label = "(a)")
 
 #DBH
 DBH_P1<-ggplot(data=new.data.DBH,aes(x=DBH2,y=1-exp(-exp(Dead))))+geom_line()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))+ theme(legend.position="none")                                                                                                                                            
@@ -150,10 +160,10 @@ Dead_P1<-ggplot(data=new.data.Dead,aes(x=Dead_dist,y=1-exp(-exp(Dead))))+geom_li
 Dead_P2<-Dead_P1+xlab("Distance to nearest dead tree (m)")+ylab("Annual probability of death")+ annotate("text", x = 0, y = 0.635, label = "(c)")
 
 #sand content
-Sand_P1<-ggplot(data=new.data.Sand,aes(x=Sand,y=1-exp(-exp(Dead))))+geom_line()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))+ theme(legend.position="none")                                                                                                                                            
-Sand_P2<-Sand_P1+xlab("Sand content of soil (%)")+ylab("Annual probability of death")+ annotate("text", x = 28, y = 0.63312, label = "(d)")
+Clay_P1<-ggplot(data=new.data.Clay,aes(x=Clay,y=1-exp(-exp(Dead))))+geom_line()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.border = element_rect(size=1.5,colour="black",fill=NA))+ theme(legend.position="none")                                                                                                                                            
+Clay_P2<-Clay_P1+xlab("Clay content of soil (%)")+ylab("Annual probability of death")+ annotate("text", x = 0, y = 0.643, label = "(d)")
 
 #put all figures together into one
 png("Figures/Tree_death.png",height=6,width=10,res=300,units="in")
-grid.arrange(GR_P2,DBH_P2,Dead_P2,Sand_P2,ncol=2)
+grid.arrange(GR_P2,DBH_P2,Dead_P2,Clay_P2,ncol=2)
 dev.off()
