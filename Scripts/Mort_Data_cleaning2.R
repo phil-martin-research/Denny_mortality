@@ -172,21 +172,37 @@ for (i in 1:nrow(YB)){
     DR_sub<-data.frame(Block=YB[i,1],Species=YB[i,2],Period=paste(Years[j-1],"-",Years[j],sep=""),YBS=T,Rate=Rate)
     DR<-rbind(DR_sub,DR)
   }
+  print(i)
 }
 row.names(DR)<-NULL
 DR2<-as.data.frame(DR)
 DR2[is.na(DR2)] <- 0
 ggplot(DR,aes(x=Block,y=Rate))+geom_point()+facet_grid(Species~Period)
 
-melt(DR,id.vars=c("Block","Period"))
-DR3<-DR2
-DR3$YBS<-NULL
-DR4<-spread(DR3,Period,Rate)
-colnames(DR4)<-c("Block","Species","y96_14","y88_96","y84_88","y64_84")
+#now get mean mortality for each species in the adjacent blocks in the previous time period
+Adj_summary<-NULL
+YB<-unique(DR2[c("Block", "Period")])
+USpecies<-unique(Tree_dead2$Species)
+DR<-data.frame()
+for (i in 1:nrow(YB)){
+  for (j in 1:length(USpecies)){
+  Block_sub<-subset(DR2,Block==YB[i,1]&Period==YB[i,2]&Species==USpecies[j])
+  Block_adj1<-subset(DR2,Block==YB[i-1,1]&Period==YB[i-1,2]&Species==USpecies[j])
+  Block_adj2<-subset(DR2,Block==YB[i+1,1]&Period==YB[i-1,2]&Species==USpecies[j])
+  if (nrow(Block_adj1)==1&nrow(Block_sub)>0|nrow(Block_adj2)==1&nrow(Block_sub)>0){
+  Sub_adj<-data.frame(Block_sub,Mort_adj=mean(c(Block_adj2$Rate,Block_adj1$Rate),na.rm=T))
+  Adj_summary<-rbind(Sub_adj,Adj_summary)
+  }else{
+    Adj_summary<-Adj_summary
+  }
+  }
+  print(i)
+}
 
+Adj_summary
 
 #now merge this data with data on soil types
 Soil<-read.csv("Data/Soil_type.csv")
-DR2_soil<-merge(DR2,Soil,by.x="Block",by.y="Plot")
+DR2_soil<-merge(Adj_summary,Soil,by.x="Block",by.y="Plot")
 
 write.csv(DR2_soil,"Data/For_mort_rates.csv",row.names=F)
