@@ -8,7 +8,11 @@ library(MuMIn)
 library(sp)
 library(spatstat)
 library(dplyr)
+library(tidyr)
 
+#function to find NaNs in dataframes
+is.nan.data.frame <- function(x)
+  do.call(cbind, lapply(x, is.nan))
 
 #import data
 DBH<-read.csv("Data/Denny_trees_cleaned.csv",colClasses=c("Tree_ID"="character"))
@@ -147,3 +151,36 @@ Tree_dead2<-Tree_dead2[with(Tree_dead2, order(ID2,Year)), ]
 
 write.csv(Tree_dead2,"Data/For_mort_rates.csv",row.names=F)
 
+#now calculate mortality rate for each subplot, foreach species, for each survey period
+
+
+YB<-unique(Tree_dead2$Block)
+DR<-data.frame()
+for (i in 1:length(YB)){
+  Block_sub<-subset(Tree_dead2,Block==YB[i])
+  Years<-unique(Block_sub$Year)
+  for (j in 2:length(Years)){
+    T1<-subset(Block_sub,Year==Years[j-1]&Dead2==0)
+    T2<-subset(Block_sub,Year==Years[j]&Dead2==1)
+    T2<-T2[T2$ID2 %in% T1$ID2, ]
+    N1<-nrow(T1)
+    N2<-nrow(T2)
+    T<-Years[j]-Years[j-1]
+    Rate<-1-(((N1-sum(N2))/N1)^(1/T))
+    DR_sub<-data.frame(Block=YB[i],Period=paste(Years[j-1],"-",Years[j],sep=""),YBS=T,Rate=Rate)
+    DR<-rbind(DR_sub,DR)
+  }
+}
+row.names(DR)<-NULL
+DR2<-as.data.frame(DR)
+DR2[is.na(DR2)] <- 0
+ggplot(DR,aes(x=Block,y=Rate))+geom_point()+facet_wrap(~Period)
+
+melt(DR,id.vars=c("Block","Period"))
+DR3<-DR2
+DR3$YBS<-NULL
+DR4<-spread(DR3,Period,Rate)
+colnames(DR4)<-c("Block","y96_14","y88_96","y84_88","y64_84")
+ggplot(DR4,aes(x=y64_84,y=y84_88))+geom_point()+geom_smooth(method="lm")
+ggplot(DR4,aes(x=y84_88,y=y88_96))+geom_point()+geom_smooth(method="lm")
+ggplot(DR4,aes(x=y88_96,y=y96_14))+geom_point()+geom_smooth(method="lm")
