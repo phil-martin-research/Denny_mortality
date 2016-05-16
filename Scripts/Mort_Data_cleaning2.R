@@ -38,7 +38,7 @@ for (i in 1:nrow(IDs)){
 }
 
 #now create a grid that gives details of each tree in each year
-Tree_grid<-data.frame(expand.grid(ID2=unique(DBH_ID$ID2),Year=unique(DBH_ID$Year),DBH=NA,BA=NA,Dead=NA))
+Tree_grid<-data.frame(expand.grid(ID2=unique(DBH_ID$ID2),Year=unique(DBH_ID$Year),DBH=NA,BA=NA,Dead=NA,Species=NA))
 Grid_bind<-NULL
 for (i in 1:nrow(DBH_ID)){
 Grid_sub<-subset(Tree_grid,ID2==DBH_ID$ID2[i])
@@ -46,6 +46,7 @@ Grid_sub<-subset(Grid_sub,Year==DBH_ID$Year[i])
 Grid_sub$DBH<-DBH_ID$DBH[i]
 Grid_sub$BA<-((Grid_sub$DBH)^2*(pi/4))/10000
 Grid_sub$Dead<-DBH_ID$Status[i]
+Grid_sub$Species<-DBH_ID$Species[i]
 Grid_bind<-rbind(Grid_sub,Grid_bind)
 }
 
@@ -54,14 +55,14 @@ Grid_bind<-rbind(Grid_sub,Grid_bind)
 #tree was not yet present (i.e. prior to recruitment)
 #or after the tree was dead
 Tree_grid1<-merge(Grid_bind,Tree_grid,by=c("ID2","Year"),all=T)
-head(Tree_grid1)
+head(Tree_grid2)
 Tree_grid2<-merge(Tree_grid1,IDs,by=c("ID2"),all=T)
 
 
 #drop coulmns that are no longer needed and rename the columns to make more sense
-keeps<-c("Block","ID2","Year","DBH.x","BA.x","Dead.x")
+keeps<-c("Block","ID2","Species.x","Year","DBH.x","BA.x","Dead.x")
 Tree_grid2<-Tree_grid2[keeps]
-colnames(Tree_grid2)<-c("Block","ID2","Year","DBH","BA","Dead")
+colnames(Tree_grid2)<-c("Block","ID2","Species","Year","DBH","BA","Dead")
 Tree_grid2$Dead<-ifelse(Tree_grid2$Dead==1,0,1)
 
 #work out whether trees are dead
@@ -74,6 +75,7 @@ Tree_IDs<-unique(Tree_grid2$ID2)
 Tree_dead<-NULL
 for (i in 1:length(Tree_IDs)){
   Tree_sub2<-subset(Tree_grid2,ID2==Tree_IDs[i])
+  Tree_sub2$Species<-unique(Tree_sub2$Species[!is.na(Tree_sub2$Species)])
   Tree_sub2$Dead2<-NA
   Tree_sub2$Dead2[1]<-Tree_sub2$Dead[1]
   if (nrow(Tree_sub2)>1){
@@ -115,7 +117,7 @@ for (i in 1:length(Tree_IDs)){
     }else if ((Tree_sub2$Year)==1996){
       Y<-2014
     }
-    Tree_sub2<-data.frame(Block=Tree_sub2$Block[1],ID2=Tree_sub2$ID2[1],Year=Y,DBH=NA,BA=NA,Dead=1,Dead2=1)
+    Tree_sub2<-data.frame(Block=Tree_sub2$Block[1],ID2=Tree_sub2$ID2[1],Species=Tree_sub2$Species[1],Year=Y,DBH=NA,BA=NA,Dead=1,Dead2=1)
   }
 }
   #bind all the data together
@@ -149,15 +151,15 @@ Tree_dead2<-rbind(Tree_sub,Tree_dead2)
 }
 Tree_dead2<-Tree_dead2[with(Tree_dead2, order(ID2,Year)), ]
 
-write.csv(Tree_dead2,"Data/For_mort_rates.csv",row.names=F)
-
-#now calculate mortality rate for each subplot, foreach species, for each survey period
 
 
-YB<-unique(Tree_dead2$Block)
+#now calculate mortality rate for each subplot, for each species, for each survey period
+
+
+YB<-unique(Tree_dead2[c("Block", "Species")])
 DR<-data.frame()
-for (i in 1:length(YB)){
-  Block_sub<-subset(Tree_dead2,Block==YB[i])
+for (i in 1:nrow(YB)){
+  Block_sub<-subset(Tree_dead2,Block==YB[i,1]&Species==YB[i,2])
   Years<-unique(Block_sub$Year)
   for (j in 2:length(Years)){
     T1<-subset(Block_sub,Year==Years[j-1]&Dead2==0)
@@ -167,20 +169,24 @@ for (i in 1:length(YB)){
     N2<-nrow(T2)
     T<-Years[j]-Years[j-1]
     Rate<-1-(((N1-sum(N2))/N1)^(1/T))
-    DR_sub<-data.frame(Block=YB[i],Period=paste(Years[j-1],"-",Years[j],sep=""),YBS=T,Rate=Rate)
+    DR_sub<-data.frame(Block=YB[i,1],Species=YB[i,2],Period=paste(Years[j-1],"-",Years[j],sep=""),YBS=T,Rate=Rate)
     DR<-rbind(DR_sub,DR)
   }
 }
 row.names(DR)<-NULL
 DR2<-as.data.frame(DR)
 DR2[is.na(DR2)] <- 0
-ggplot(DR,aes(x=Block,y=Rate))+geom_point()+facet_wrap(~Period)
+ggplot(DR,aes(x=Block,y=Rate))+geom_point()+facet_grid(Species~Period)
 
 melt(DR,id.vars=c("Block","Period"))
 DR3<-DR2
 DR3$YBS<-NULL
 DR4<-spread(DR3,Period,Rate)
-colnames(DR4)<-c("Block","y96_14","y88_96","y84_88","y64_84")
-ggplot(DR4,aes(x=y64_84,y=y84_88))+geom_point()+geom_smooth(method="lm")
-ggplot(DR4,aes(x=y84_88,y=y88_96))+geom_point()+geom_smooth(method="lm")
-ggplot(DR4,aes(x=y88_96,y=y96_14))+geom_point()+geom_smooth(method="lm")
+colnames(DR4)<-c("Block","Species","y96_14","y88_96","y84_88","y64_84")
+
+
+#now merge this data with data on soil types
+Soil<-read.csv("Data/Soil_type.csv")
+DR2_soil<-merge(DR2,Soil,by.x="Block",by.y="Plot")
+
+write.csv(DR2_soil,"Data/For_mort_rates.csv",row.names=F)
